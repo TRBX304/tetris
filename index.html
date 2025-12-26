@@ -1093,6 +1093,9 @@
                 this.BOARD_WIDTH = 10;
                 this.BOARD_HEIGHT = 20;
                 
+                // ゲーム状態（ステートマシン）
+                this.gameState = 'PLAYING'; // 'PLAYING', 'LINE_CLEARING', 'SPAWNING', 'GAME_OVER', 'PAUSED'
+                
                 // スマホ対応: 画面サイズに応じてブロックサイズを調整
                 this.BLOCK_SIZE = this.calculateBlockSize();
 
@@ -1124,6 +1127,11 @@
 
                 this.pieceBag = [];
                 this.gameTimer = null;
+                
+                // requestAnimationFrameベースのゲームループ用
+                this.lastUpdateTime = 0;
+                this.dropTimer = 0;
+                this.animationFrameId = null;
 
                 this.setupControls();
                 this.init();
@@ -1281,8 +1289,11 @@
                 this.fillPieceBag();
                 this.nextPieceType = this.getNextPiece();
                 this.spawnNewPiece();
-                this.startGameTimer();
                 this.drawNext();
+                
+                // requestAnimationFrameベースのゲームループを開始
+                this.lastUpdateTime = performance.now();
+                this.startGameLoop();
             }
 
             fillPieceBag() {
@@ -1297,22 +1308,56 @@
                 return this.pieceBag.shift();
             }
 
-            startGameTimer() {
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                }
-                const speed = Math.max(200, 700 - (this.level - 1) * 50);
-                this.gameTimer = setInterval(() => this.tick(), speed);
+            startGameLoop() {
+                const gameLoop = (currentTime) => {
+                    if (this.isGameOver) {
+                        return;
+                    }
+
+                    const deltaTime = currentTime - this.lastUpdateTime;
+                    this.lastUpdateTime = currentTime;
+
+                    // ゲーム更新
+                    if (!this.isPaused && this.gameState === 'PLAYING') {
+                        this.update(deltaTime);
+                    }
+
+                    // 描画
+                    this.draw();
+
+                    // 次のフレーム
+                    this.animationFrameId = requestAnimationFrame(gameLoop);
+                };
+
+                this.animationFrameId = requestAnimationFrame(gameLoop);
             }
 
-            tick() {
-                if (!this.isPaused && !this.isGameOver) {
+            update(deltaTime) {
+                // 落下速度の計算（レベルに応じて変化）
+                const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
+                
+                this.dropTimer += deltaTime;
+                
+                if (this.dropTimer >= dropInterval) {
+                    this.dropTimer = 0;
                     this.moveDown();
                 }
             }
 
+            startGameTimer() {
+                // この関数は互換性のために残すが、何もしない
+                // 実際のゲームループはrequestAnimationFrameで管理
+            }
+
+            tick() {
+                // この関数は互換性のために残すが、何もしない
+            }
+
             spawnNewPiece() {
-                if (this.isGameOver) return;
+                if (this.isGameOver || this.gameState === 'SPAWNING') return;
+
+                // 状態をSPAWNINGに変更（多重実行防止）
+                this.gameState = 'SPAWNING';
 
                 const newPiece = new Tetromino(this.nextPieceType);
                 this.nextPieceType = this.getNextPiece();
@@ -1320,7 +1365,10 @@
 
                 if (this.checkCollision(newPiece, 0, 0)) {
                     this.isGameOver = true;
-                    clearInterval(this.gameTimer);
+                    this.gameState = 'GAME_OVER';
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
                     clearInterval(this.timerInterval);
                     if (this.mode === 'normal') {
                         this.saveRecord();
@@ -1330,6 +1378,8 @@
                     this.currentPiece = newPiece;
                     // 最初のピースが生成されたらタイマー開始（二重起動防止済み）
                     this.startTimer();
+                    // 状態をPLAYINGに戻す
+                    this.gameState = 'PLAYING';
                 }
             }
 
@@ -1504,6 +1554,8 @@
             }
 
             clearLines() {
+                if (this.gameState === 'LINE_CLEARING') return 0;
+
                 let linesCleared = 0;
                 const linesToClear = [];
 
@@ -1516,6 +1568,9 @@
                 }
 
                 if (linesCleared > 0) {
+                    // 状態をLINE_CLEARINGに変更（この間は他の処理をブロック）
+                    this.gameState = 'LINE_CLEARING';
+                    
                     // エフェクト: ラインを白く光らせる
                     this.flashLines(linesToClear);
                     
@@ -1549,11 +1604,13 @@
 
                         if (newLevel > this.level) {
                             this.level = newLevel;
-                            this.startGameTimer();
                         }
 
                         // タイムアタック完了チェック
                         this.checkTimeAttackComplete();
+                        
+                        // 状態をPLAYINGに戻す
+                        this.gameState = 'PLAYING';
                         
                         this.draw();
                     }, 200);
@@ -1953,8 +2010,16 @@
             }
 
             goHome() {
-                clearInterval(this.gameTimer);
-                clearInterval(this.timerInterval);
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+                if (this.animationFrameId) {
+                    cancelAnimationFrame(this.animationFrameId);
+                }
+                
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 document.getElementById('pauseOverlay').classList.add('hidden');
@@ -1965,13 +2030,23 @@
             }
 
             reset() {
-                // タイマーを完全に停止
-                clearInterval(this.gameTimer);
-                clearInterval(this.timerInterval);
+                // すべてのタイマーとアニメーションを完全に停止
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+                if (this.animationFrameId) {
+                    cancelAnimationFrame(this.animationFrameId);
+                }
+                
                 this.gameTimer = null;
                 this.timerInterval = null;
+                this.animationFrameId = null;
                 
                 // すべての状態を完全にリセット
+                this.gameState = 'PLAYING';
                 this.currentPiece = null;
                 this.nextPieceType = null;
                 this.score = 0;
@@ -1986,6 +2061,10 @@
                 // タイマーを完全にリセット
                 this.startTime = null;
                 this.elapsedTime = 0;
+                
+                // ゲームループ用変数をリセット
+                this.lastUpdateTime = 0;
+                this.dropTimer = 0;
                 
                 // ピースバッグを完全にクリア
                 this.pieceBag = [];
@@ -2005,18 +2084,19 @@
                 this.fillPieceBag();
                 this.nextPieceType = this.getNextPiece();
                 
-                // 新しいゲームタイマーを開始
-                this.startGameTimer();
-                
-                // 最初のピースを生成
-                this.spawnNewPiece();
-                
                 // NEXTを描画
                 this.drawNext();
                 
                 // 表示を更新
                 this.updateDisplay();
                 this.updateModeInfo();
+                
+                // 新しいゲームループを開始
+                this.lastUpdateTime = performance.now();
+                this.startGameLoop();
+                
+                // 最初のピースを生成
+                this.spawnNewPiece();
                 
                 // ボードを描画
                 this.draw();
