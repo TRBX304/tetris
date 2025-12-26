@@ -1123,6 +1123,7 @@
                 this.startTime = null;
                 this.elapsedTime = 0;
                 this.timerInterval = null;
+                this.timerStarted = false;  // タイマー開始フラグ
                 this.targetLines = this.getTargetLines();
 
                 this.pieceBag = [];
@@ -1185,7 +1186,12 @@
                     return;
                 }
                 
-                // タイマー開始（最初のピース生成時ではなく、最初の操作時に開始したい場合は呼び出し元を調整）
+                // 状態チェック
+                if (this.gameState !== 'PLAYING') {
+                    return;
+                }
+                
+                // タイマー開始
                 this.startTime = Date.now();
                 this.timerInterval = setInterval(() => {
                     if (!this.isPaused && !this.isGameOver) {
@@ -1194,11 +1200,11 @@
                     }
                 }, 10);
             }
-
-            // 最初の操作時にタイマーを開始
-            startTimerOnFirstMove() {
-                if (!this.startTime && this.mode !== 'normal') {
-                    this.startTimer();
+            
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
                 }
             }
 
@@ -1349,6 +1355,12 @@
             }
 
             update(deltaTime) {
+                // タイマーを状態依存で開始（入力から完全に切り離す）
+                if (!this.timerStarted && this.gameState === 'PLAYING' && this.currentPiece) {
+                    this.startTimer();
+                    this.timerStarted = true;
+                }
+                
                 // 落下速度の計算（レベルに応じて変化）
                 const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
                 
@@ -1425,9 +1437,6 @@
             moveDown(manual = false) {
                 if (!this.currentPiece || this.isGameOver) return;
 
-                // 最初の操作時にタイマー開始
-                this.startTimerOnFirstMove();
-
                 if (!this.checkCollision(this.currentPiece, 0, 1)) {
                     this.currentPiece.position.y++;
                     // 手動での下移動のみlastMoveWasRotationをリセット
@@ -1443,9 +1452,6 @@
             moveLeft() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
 
-                // 最初の操作時にタイマー開始
-                this.startTimerOnFirstMove();
-
                 if (!this.checkCollision(this.currentPiece, -1, 0)) {
                     this.currentPiece.position.x--;
                     this.lastMoveWasRotation = false;
@@ -1456,9 +1462,6 @@
             moveRight() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
 
-                // 最初の操作時にタイマー開始
-                this.startTimerOnFirstMove();
-
                 if (!this.checkCollision(this.currentPiece, 1, 0)) {
                     this.currentPiece.position.x++;
                     this.lastMoveWasRotation = false;
@@ -1468,9 +1471,6 @@
 
             rotate() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                // 最初の操作時にタイマー開始
-                this.startTimerOnFirstMove();
 
                 const rotated = this.currentPiece.rotate();
                 
@@ -1502,9 +1502,6 @@
 
             hardDrop() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                // 最初の操作時にタイマー開始
-                this.startTimerOnFirstMove();
 
                 while (!this.checkCollision(this.currentPiece, 0, 1)) {
                     this.currentPiece.position.y++;
@@ -1696,12 +1693,12 @@
                 for (let y = 0; y < this.BOARD_HEIGHT; y++) {
                     for (let x = 0; x < this.BOARD_WIDTH; x++) {
                         if (this.board[y][x]) {
-                            // フラッシュ対象のラインは白く光らせる
+                            // フラッシュ対象のラインは白く光らせる（1回だけ）
                             if (this.gameState === 'LINE_CLEARING' && 
                                 this.flashingLines.includes(y) && 
-                                this.flashCounter % 2 === 0) {
+                                this.flashCounter < 6) {  // 最初の6フレームだけ光る
                                 this.ctx.fillStyle = '#ffffff';
-                                this.ctx.shadowBlur = 10;
+                                this.ctx.shadowBlur = 15;
                                 this.ctx.shadowColor = '#ffffff';
                                 this.ctx.fillRect(
                                     x * this.BLOCK_SIZE,
@@ -1887,11 +1884,9 @@
             }
 
             goHome() {
+                this.stopTimer();
                 if (this.gameTimer) {
                     clearInterval(this.gameTimer);
-                }
-                if (this.timerInterval) {
-                    clearInterval(this.timerInterval);
                 }
                 if (this.animationFrameId) {
                     cancelAnimationFrame(this.animationFrameId);
@@ -1908,18 +1903,15 @@
 
             reset() {
                 // すべてのタイマーとアニメーションを完全に停止
+                this.stopTimer();
                 if (this.gameTimer) {
                     clearInterval(this.gameTimer);
-                }
-                if (this.timerInterval) {
-                    clearInterval(this.timerInterval);
                 }
                 if (this.animationFrameId) {
                     cancelAnimationFrame(this.animationFrameId);
                 }
                 
                 this.gameTimer = null;
-                this.timerInterval = null;
                 this.animationFrameId = null;
                 
                 // すべての状態を完全にリセット
@@ -1938,6 +1930,7 @@
                 // タイマーを完全にリセット
                 this.startTime = null;
                 this.elapsedTime = 0;
+                this.timerStarted = false;
                 
                 // ゲームループ用変数をリセット
                 this.lastUpdateTime = 0;
