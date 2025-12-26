@@ -2,7 +2,7 @@
   "name": "TETRIS Game",
   "short_name": "TETRIS",
   "description": "クラシックなテトリスゲーム",
-  "start_url": "./tetris.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
