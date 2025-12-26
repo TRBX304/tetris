@@ -21,10 +21,10 @@
             font-family: 'Courier New', monospace;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             padding: 10px;
-            overflow: hidden;
+            overflow-y: auto;
         }
 
         .game-container {
@@ -240,6 +240,176 @@
             display: none;
         }
 
+        /* ホーム画面 */
+        .home-screen {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .home-title {
+            font-size: 60px;
+            color: #00ffff;
+            letter-spacing: 12px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px #00ffff;
+        }
+
+        .mode-selection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .mode-button {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid #00ffff;
+            padding: 30px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-button:hover {
+            transform: translateY(-5px);
+            border-color: #ffff00;
+            box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .mode-button h2 {
+            color: #00ffff;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .mode-button p {
+            color: #aaa;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .mode-button .best-time {
+            color: #ffff00;
+            font-size: 18px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .rankings {
+            background: rgba(128, 128, 128, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .rankings h3 {
+            color: #00ffff;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .ranking-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .ranking-tab {
+            background: rgba(128, 128, 128, 0.3);
+            color: #aaa;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .ranking-tab.active {
+            background: #00ffff;
+            color: #000;
+            border-color: #00ffff;
+        }
+
+        .ranking-list {
+            text-align: left;
+        }
+
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border-left: 3px solid #00ffff;
+        }
+
+        .ranking-item .rank {
+            color: #ffff00;
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        .ranking-item .time {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .ranking-item .date {
+            color: #888;
+            font-size: 12px;
+        }
+
+        /* タイム表示 */
+        .time-display {
+            font-size: 18px;
+            color: #ffff00;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .mode-info {
+            font-size: 14px;
+            color: #00ffff;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .home-title {
+                font-size: 40px;
+                letter-spacing: 8px;
+                margin-bottom: 30px;
+            }
+
+            .mode-selection {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .mode-button {
+                padding: 20px 15px;
+            }
+
+            .mode-button h2 {
+                font-size: 20px;
+            }
+
+            .ranking-tabs {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+
+            .ranking-tab {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 5px;
@@ -379,9 +549,58 @@
     </style>
 </head>
 <body>
-    <div class="game-container">
+    <!-- ホーム画面 -->
+    <div id="homeScreen" class="home-screen">
+        <h1 class="home-title">TETRIS</h1>
+        
+        <div class="mode-selection">
+            <div class="mode-button" onclick="startGame('normal')">
+                <h2>ノーマル</h2>
+                <p>エンドレスモード</p>
+                <p>スコアアタック</p>
+                <div class="best-time" id="normalBest">最高: - 点</div>
+            </div>
+            
+            <div class="mode-button" onclick="startGame('time20')">
+                <h2>20ライン</h2>
+                <p>タイムアタック</p>
+                <p>20ライン消去</p>
+                <div class="best-time" id="time20Best">記録: --:--.---</div>
+            </div>
+            
+            <div class="mode-button" onclick="startGame('time50')">
+                <h2>50ライン</h2>
+                <p>タイムアタック</p>
+                <p>50ライン消去</p>
+                <div class="best-time" id="time50Best">記録: --:--.---</div>
+            </div>
+            
+            <div class="mode-button" onclick="startGame('time100')">
+                <h2>100ライン</h2>
+                <p>タイムアタック</p>
+                <p>100ライン消去</p>
+                <div class="best-time" id="time100Best">記録: --:--.---</div>
+            </div>
+        </div>
+
+        <div class="rankings">
+            <h3>🏆 ランキング</h3>
+            <div class="ranking-tabs">
+                <button class="ranking-tab active" onclick="showRanking('normal')">ノーマル</button>
+                <button class="ranking-tab" onclick="showRanking('time20')">20ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time50')">50ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time100')">100ライン</button>
+            </div>
+            <div class="ranking-list" id="rankingList"></div>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div class="game-container hidden" id="gameScreen">
         <h1>TETRIS</h1>
         
+        <div class="mode-info" id="modeInfo"></div>
+        <div class="time-display" id="timeDisplay"></div>
         <div class="action-display" id="actionDisplay"></div>
 
         <div class="game-area">
@@ -410,7 +629,7 @@
 
                 <div class="button-group">
                     <button class="pause-button" id="pauseButton">⏸ 一時停止</button>
-                    <button class="reset-button" id="resetButton">🔄 リスタート</button>
+                    <button class="reset-button" id="resetButton">🏠 ホーム</button>
                 </div>
             </div>
         </div>
@@ -420,7 +639,7 @@
         <div class="overlay-content game-over-overlay">
             <div class="overlay-title game-over-title">GAME OVER</div>
             <div class="overlay-score">最終スコア: <span id="finalScore">0</span></div>
-            <button class="overlay-button" onclick="game.reset()">もう一度プレイ</button>
+            <button class="overlay-button" onclick="game.goHome()">🏠 ホームに戻る</button>
         </div>
     </div>
 
@@ -500,7 +719,8 @@
         }
 
         class TetrisGame {
-            constructor() {
+            constructor(mode = 'normal') {
+                this.mode = mode; // 'normal', 'time20', 'time50', 'time100'
                 this.BOARD_WIDTH = 10;
                 this.BOARD_HEIGHT = 20;
                 
@@ -527,11 +747,136 @@
                 this.lastAction = '';
                 this.lastMoveWasRotation = false;
 
+                // タイム機能
+                this.startTime = null;
+                this.elapsedTime = 0;
+                this.timerInterval = null;
+                this.targetLines = this.getTargetLines();
+
                 this.pieceBag = [];
                 this.gameTimer = null;
 
                 this.setupControls();
                 this.init();
+                this.updateModeInfo();
+            }
+
+            getTargetLines() {
+                switch(this.mode) {
+                    case 'time20': return 20;
+                    case 'time50': return 50;
+                    case 'time100': return 100;
+                    default: return null;
+                }
+            }
+
+            updateModeInfo() {
+                const modeInfo = document.getElementById('modeInfo');
+                switch(this.mode) {
+                    case 'normal':
+                        modeInfo.textContent = '📊 ノーマルモード';
+                        break;
+                    case 'time20':
+                        modeInfo.textContent = '⏱️ 20ライン タイムアタック';
+                        break;
+                    case 'time50':
+                        modeInfo.textContent = '⏱️ 50ライン タイムアタック';
+                        break;
+                    case 'time100':
+                        modeInfo.textContent = '⏱️ 100ライン タイムアタック';
+                        break;
+                }
+            }
+
+            startTimer() {
+                if (this.mode !== 'normal' && !this.startTime) {
+                    this.startTime = Date.now();
+                    this.timerInterval = setInterval(() => {
+                        if (!this.isPaused && !this.isGameOver) {
+                            this.elapsedTime = Date.now() - this.startTime;
+                            this.updateTimeDisplay();
+                        }
+                    }, 10);
+                }
+            }
+
+            updateTimeDisplay() {
+                const timeDisplay = document.getElementById('timeDisplay');
+                if (this.mode === 'normal') {
+                    timeDisplay.textContent = '';
+                    return;
+                }
+
+                const totalSeconds = this.elapsedTime / 1000;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = Math.floor(totalSeconds % 60);
+                const milliseconds = Math.floor((totalSeconds % 1) * 1000);
+                
+                timeDisplay.textContent = `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+            }
+
+            checkTimeAttackComplete() {
+                if (this.targetLines && this.linesRemoved >= this.targetLines) {
+                    this.isGameOver = true;
+                    clearInterval(this.gameTimer);
+                    clearInterval(this.timerInterval);
+                    this.saveRecord();
+                    this.showTimeAttackComplete();
+                }
+            }
+
+            saveRecord() {
+                const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
+                if (!records[this.mode]) {
+                    records[this.mode] = [];
+                }
+
+                const record = {
+                    mode: this.mode,
+                    time: this.elapsedTime,
+                    score: this.score,
+                    date: new Date().toISOString()
+                };
+
+                if (this.mode === 'normal') {
+                    record.score = this.score;
+                    delete record.time;
+                }
+
+                records[this.mode].push(record);
+                records[this.mode].sort((a, b) => {
+                    if (this.mode === 'normal') {
+                        return b.score - a.score;
+                    }
+                    return a.time - b.time;
+                });
+                records[this.mode] = records[this.mode].slice(0, 10); // Top 10
+
+                localStorage.setItem('tetrisRecords', JSON.stringify(records));
+            }
+
+            showTimeAttackComplete() {
+                const totalSeconds = this.elapsedTime / 1000;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = Math.floor(totalSeconds % 60);
+                const milliseconds = Math.floor((totalSeconds % 1) * 1000);
+                const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+
+                document.getElementById('finalScore').textContent = `${timeStr}`;
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
+                
+                // タイトルを変更
+                const title = document.querySelector('.game-over-title');
+                title.textContent = 'COMPLETE!';
+                title.style.color = '#00ff00';
+            }
+
+            formatTime(milliseconds) {
+                const totalSeconds = milliseconds / 1000;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = Math.floor(totalSeconds % 60);
+                const ms = Math.floor((totalSeconds % 1) * 1000);
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
             }
 
             calculateBlockSize() {
@@ -553,7 +898,7 @@
                 this.fillPieceBag();
                 this.nextPieceType = this.getNextPiece();
                 this.spawnNewPiece();
-                this.startTimer();
+                this.startGameTimer();
                 this.drawNext();
             }
 
@@ -569,7 +914,7 @@
                 return this.pieceBag.shift();
             }
 
-            startTimer() {
+            startGameTimer() {
                 if (this.gameTimer) {
                     clearInterval(this.gameTimer);
                 }
@@ -593,9 +938,17 @@
                 if (this.checkCollision(newPiece, 0, 0)) {
                     this.isGameOver = true;
                     clearInterval(this.gameTimer);
+                    clearInterval(this.timerInterval);
+                    if (this.mode === 'normal') {
+                        this.saveRecord();
+                    }
                     this.showGameOver();
                 } else {
                     this.currentPiece = newPiece;
+                    // 最初のピースが生成されたらタイマー開始
+                    if (!this.startTime && this.mode !== 'normal') {
+                        this.startTimer();
+                    }
                 }
             }
 
@@ -793,8 +1146,11 @@
 
                     if (newLevel > this.level) {
                         this.level = newLevel;
-                        this.startTimer();
+                        this.startGameTimer();
                     }
+
+                    // タイムアタック完了チェック
+                    this.checkTimeAttackComplete();
                 }
 
                 return linesCleared;
@@ -1111,13 +1467,112 @@
                 });
 
                 document.getElementById('resetButton').addEventListener('click', () => {
-                    this.reset();
+                    if (confirm('ホーム画面に戻りますか？')) {
+                        this.goHome();
+                    }
                 });
+            }
+
+            goHome() {
+                clearInterval(this.gameTimer);
+                clearInterval(this.timerInterval);
+                document.getElementById('gameScreen').classList.add('hidden');
+                document.getElementById('homeScreen').classList.remove('hidden');
+                loadBestRecords();
+                showRanking('normal');
+            }
+
+            showGameOver() {
+                const title = document.querySelector('.game-over-title');
+                title.textContent = 'GAME OVER';
+                title.style.color = '#ff0000';
+                
+                if (this.mode === 'normal') {
+                    document.getElementById('finalScore').textContent = this.score.toLocaleString() + ' 点';
+                }
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
             }
         }
 
         // ゲーム開始
-        const game = new TetrisGame();
+        let game = null;
+
+        function startGame(mode) {
+            document.getElementById('homeScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            document.getElementById('pauseOverlay').classList.add('hidden');
+            
+            game = new TetrisGame(mode);
+        }
+
+        function loadBestRecords() {
+            const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
+            
+            // ノーマルモード
+            if (records.normal && records.normal.length > 0) {
+                document.getElementById('normalBest').textContent = `最高: ${records.normal[0].score.toLocaleString()} 点`;
+            }
+            
+            // タイムアタック
+            ['time20', 'time50', 'time100'].forEach(mode => {
+                if (records[mode] && records[mode].length > 0) {
+                    const time = records[mode][0].time;
+                    const totalSeconds = time / 1000;
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = Math.floor(totalSeconds % 60);
+                    const ms = Math.floor((totalSeconds % 1) * 1000);
+                    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+                    document.getElementById(`${mode}Best`).textContent = `記録: ${timeStr}`;
+                }
+            });
+        }
+
+        function showRanking(mode) {
+            // タブの切り替え
+            document.querySelectorAll('.ranking-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
+            const rankingList = document.getElementById('rankingList');
+            
+            if (!records[mode] || records[mode].length === 0) {
+                rankingList.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">まだ記録がありません</div>';
+                return;
+            }
+            
+            rankingList.innerHTML = records[mode].map((record, index) => {
+                const date = new Date(record.date);
+                const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
+                
+                let displayValue = '';
+                if (mode === 'normal') {
+                    displayValue = `${record.score.toLocaleString()} 点`;
+                } else {
+                    const totalSeconds = record.time / 1000;
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = Math.floor(totalSeconds % 60);
+                    const ms = Math.floor((totalSeconds % 1) * 1000);
+                    displayValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+                }
+                
+                return `
+                    <div class="ranking-item">
+                        <span class="rank">#${index + 1}</span>
+                        <span class="time">${displayValue}</span>
+                        <span class="date">${dateStr}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 初期化
+        window.addEventListener('load', () => {
+            loadBestRecords();
+            showRanking('normal');
+        });
 
         // Service Worker登録
         if ('serviceWorker' in navigator) {
