@@ -225,47 +225,110 @@
         .button-controls {
             position: fixed;
             bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            right: 0;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            justify-content: center;
             z-index: 100;
+            pointer-events: none;
         }
 
-        .control-buttons {
+        .gameboy-controls {
             display: flex;
-            gap: 10px;
+            gap: 80px;
+            align-items: center;
+            background: rgba(30, 30, 30, 0.7);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+
+        /* 十字キー */
+        .dpad {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .dpad-row {
+            display: flex;
+            gap: 0;
+        }
+
+        .dpad-btn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
+            border: 2px solid #555;
+            color: #aaa;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.1s;
+            user-select: none;
+            display: flex;
+            align-items: center;
             justify-content: center;
         }
 
-        .control-btn {
+        .dpad-btn:active {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            transform: scale(0.95);
+        }
+
+        .dpad-empty {
+            width: 50px;
+            height: 50px;
+        }
+
+        .dpad-center {
+            width: 50px;
+            height: 50px;
+            background: #1a1a1a;
+            border: 2px solid #555;
+            border-radius: 50%;
+        }
+
+        /* A/Bボタン */
+        .ab-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .ab-btn {
             width: 70px;
             height: 70px;
-            font-size: 24px;
-            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
-            border: 2px solid #00ffff;
-            border-radius: 12px;
-            color: #00ffff;
+            background: linear-gradient(145deg, #4a4a4a, #3a3a3a);
+            border: 3px solid #666;
+            border-radius: 50%;
+            color: #ddd;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
             transition: all 0.1s;
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
             user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             line-height: 1.2;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
         }
 
-        .control-btn:active {
+        .ab-btn:active {
+            background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
             transform: scale(0.95);
-            box-shadow: 0 2px 8px rgba(0, 255, 255, 0.5);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
         }
 
-        .control-btn:hover {
-            background: linear-gradient(145deg, #3a3a4e, #2a2a3e);
-            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+        #bBtn {
+            transform: translateX(-10px);
+        }
+
+        #aBtn {
+            transform: translateX(10px);
         }
 
         /* ネオン効果 */
@@ -661,6 +724,28 @@
                 font-size: 20px;
             }
 
+            .gameboy-controls {
+                gap: 40px;
+                padding: 15px;
+            }
+
+            .dpad-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .dpad-empty, .dpad-center {
+                width: 40px;
+                height: 40px;
+            }
+
+            .ab-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 16px;
+            }
+
             #controlTogglePanel {
                 padding: 6px;
             }
@@ -823,14 +908,31 @@
 
         <!-- ボタン操作パネル -->
         <div id="buttonControls" class="button-controls hidden">
-            <div class="control-buttons">
-                <button class="control-btn" id="rotateBtn">🔄<br>回転</button>
-                <button class="control-btn" id="dropBtn">⬇️<br>落下</button>
-            </div>
-            <div class="control-buttons">
-                <button class="control-btn" id="leftBtn">⬅️</button>
-                <button class="control-btn" id="downBtn">⬇️</button>
-                <button class="control-btn" id="rightBtn">➡️</button>
+            <div class="gameboy-controls">
+                <!-- 十字キー -->
+                <div class="dpad">
+                    <div class="dpad-row">
+                        <div class="dpad-empty"></div>
+                        <button class="dpad-btn" id="upBtn">▲</button>
+                        <div class="dpad-empty"></div>
+                    </div>
+                    <div class="dpad-row">
+                        <button class="dpad-btn" id="leftBtn">◀</button>
+                        <div class="dpad-center"></div>
+                        <button class="dpad-btn" id="rightBtn">▶</button>
+                    </div>
+                    <div class="dpad-row">
+                        <div class="dpad-empty"></div>
+                        <button class="dpad-btn" id="downBtn">▼</button>
+                        <div class="dpad-empty"></div>
+                    </div>
+                </div>
+                
+                <!-- A/Bボタン -->
+                <div class="ab-buttons">
+                    <button class="ab-btn" id="bBtn">B<br><span style="font-size:10px;">回転</span></button>
+                    <button class="ab-btn" id="aBtn">A<br><span style="font-size:10px;">落下</span></button>
+                </div>
             </div>
         </div>
     </div>
@@ -1468,17 +1570,20 @@
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
                                     if (y >= 0) {
-                                        // ゴーストは点線の枠のみ
-                                        this.ctx.strokeStyle = this.currentPiece.color;
-                                        this.ctx.lineWidth = 2;
-                                        this.ctx.setLineDash([5, 5]);
+                                        this.ctx.fillStyle = this.currentPiece.color + '30';
+                                        this.ctx.fillRect(
+                                            x * this.BLOCK_SIZE,
+                                            y * this.BLOCK_SIZE,
+                                            this.BLOCK_SIZE,
+                                            this.BLOCK_SIZE
+                                        );
+                                        this.ctx.strokeStyle = this.currentPiece.color + '60';
                                         this.ctx.strokeRect(
                                             x * this.BLOCK_SIZE,
                                             y * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
-                                        this.ctx.setLineDash([]);
                                     }
                                 }
                             }
@@ -1501,8 +1606,8 @@
             }
 
             drawBlock(x, y, color) {
-                // ネオン効果のためのグロー
-                this.ctx.shadowBlur = 10;
+                // 控えめなグロー効果
+                this.ctx.shadowBlur = 3;
                 this.ctx.shadowColor = color;
                 
                 this.ctx.fillStyle = color;
@@ -1513,8 +1618,8 @@
                     this.BLOCK_SIZE
                 );
                 
-                // インナーハイライト
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                // 控えめなインナーハイライト
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
                 this.ctx.fillRect(
                     x * this.BLOCK_SIZE + 2,
                     y * this.BLOCK_SIZE + 2,
@@ -1768,11 +1873,15 @@
                     if (!this.isPaused && !this.isGameOver) this.moveDown(true);
                 });
 
-                document.getElementById('rotateBtn').addEventListener('click', () => {
+                document.getElementById('upBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.hardDrop();
+                });
+
+                document.getElementById('bBtn').addEventListener('click', () => {
                     if (!this.isPaused && !this.isGameOver) this.rotate();
                 });
 
-                document.getElementById('dropBtn').addEventListener('click', () => {
+                document.getElementById('aBtn').addEventListener('click', () => {
                     if (!this.isPaused && !this.isGameOver) this.hardDrop();
                 });
             }
@@ -1813,6 +1922,7 @@
                 this.startTime = null;
                 this.elapsedTime = 0;
                 
+                // ピースバッグを完全にリセット
                 this.pieceBag = [];
                 
                 // オーバーレイを隠す
@@ -1821,8 +1931,18 @@
                 document.getElementById('actionDisplay').innerHTML = '';
                 document.getElementById('timeDisplay').textContent = '';
                 
-                // ゲームを再初期化
-                this.init();
+                // ボードを再初期化
+                this.board = Array(this.BOARD_HEIGHT).fill(null).map(() => 
+                    Array(this.BOARD_WIDTH).fill(null)
+                );
+
+                // 新しいピースバッグを作成
+                this.fillPieceBag();
+                this.nextPieceType = this.getNextPiece();
+                this.spawnNewPiece();
+                this.startGameTimer();
+                this.drawNext();
+                
                 this.updateDisplay();
                 this.updateModeInfo();
                 this.draw();
