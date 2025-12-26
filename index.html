@@ -1128,6 +1128,10 @@
                 this.pieceBag = [];
                 this.gameTimer = null;
                 
+                // ライン消去エフェクト用
+                this.flashingLines = [];
+                this.flashCounter = 0;
+                
                 // requestAnimationFrameベースのゲームループ用
                 this.lastUpdateTime = 0;
                 this.dropTimer = 0;
@@ -1638,6 +1642,8 @@
                         
                         // 状態をPLAYINGに戻す
                         this.gameState = 'PLAYING';
+                        this.flashingLines = [];
+                        this.flashCounter = 0;
                         
                         // ライン消去完了後に新しいピースを生成
                         this.spawnNewPiece();
@@ -1651,26 +1657,9 @@
             }
 
             flashLines(lines) {
-                // 光るエフェクト
-                for (let i = 0; i < 3; i++) {
-                    setTimeout(() => {
-                        for (const y of lines) {
-                            for (let x = 0; x < this.BOARD_WIDTH; x++) {
-                                if (i % 2 === 0) {
-                                    this.ctx.fillStyle = '#ffffff';
-                                } else {
-                                    this.ctx.fillStyle = this.board[y][x] || '#ffffff';
-                                }
-                                this.ctx.fillRect(
-                                    x * this.BLOCK_SIZE,
-                                    y * this.BLOCK_SIZE,
-                                    this.BLOCK_SIZE,
-                                    this.BLOCK_SIZE
-                                );
-                            }
-                        }
-                    }, i * 60);
-                }
+                // エフェクト状態を保存（描画はdraw内で行う）
+                this.flashingLines = lines;
+                this.flashCounter = 0;
             }
 
             showAction(text) {
@@ -1708,11 +1697,32 @@
                 for (let y = 0; y < this.BOARD_HEIGHT; y++) {
                     for (let x = 0; x < this.BOARD_WIDTH; x++) {
                         if (this.board[y][x]) {
-                            this.drawBlock(x, y, this.board[y][x]);
+                            // フラッシュ対象のラインは白く光らせる
+                            if (this.gameState === 'LINE_CLEARING' && 
+                                this.flashingLines.includes(y) && 
+                                this.flashCounter % 2 === 0) {
+                                this.ctx.fillStyle = '#ffffff';
+                                this.ctx.shadowBlur = 10;
+                                this.ctx.shadowColor = '#ffffff';
+                                this.ctx.fillRect(
+                                    x * this.BLOCK_SIZE,
+                                    y * this.BLOCK_SIZE,
+                                    this.BLOCK_SIZE,
+                                    this.BLOCK_SIZE
+                                );
+                                this.ctx.shadowBlur = 0;
+                            } else {
+                                this.drawBlock(x, y, this.board[y][x]);
+                            }
                         } else {
                             this.drawEmptyBlock(x, y);
                         }
                     }
+                }
+                
+                // フラッシュカウンターを進める
+                if (this.gameState === 'LINE_CLEARING') {
+                    this.flashCounter++;
                 }
 
                 // ゴースト（影）を描画
@@ -1875,28 +1885,6 @@
             showGameOver() {
                 document.getElementById('finalScore').textContent = this.score.toLocaleString();
                 document.getElementById('gameOverOverlay').classList.remove('hidden');
-            }
-
-            reset() {
-                clearInterval(this.gameTimer);
-                
-                this.score = 0;
-                this.level = 1;
-                this.totalLinesCleared = 0;
-                this.linesRemoved = 0;
-                this.isGameOver = false;
-                this.isPaused = false;
-                this.lastAction = '';
-                this.pieceBag = [];
-
-                document.getElementById('gameOverOverlay').classList.add('hidden');
-                document.getElementById('pauseOverlay').classList.add('hidden');
-                document.getElementById('actionDisplay').innerHTML = '';
-                document.getElementById('pauseButton').textContent = '⏸ 一時停止';
-
-                this.init();
-                this.updateDisplay();
-                this.draw();
             }
 
             setupControls() {
@@ -2166,6 +2154,20 @@
         }
 
         function startGame(mode) {
+            // 既存のゲームインスタンスがあれば完全に破棄
+            if (game) {
+                if (game.animationFrameId) {
+                    cancelAnimationFrame(game.animationFrameId);
+                }
+                if (game.timerInterval) {
+                    clearInterval(game.timerInterval);
+                }
+                if (game.gameTimer) {
+                    clearInterval(game.gameTimer);
+                }
+                game = null;
+            }
+            
             document.getElementById('homeScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
             document.getElementById('gameOverOverlay').classList.add('hidden');
