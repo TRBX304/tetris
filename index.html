@@ -150,6 +150,10 @@
             gap: 12px;
         }
 
+        .button-group button {
+            flex: 1;
+        }
+
         button {
             font-family: 'Courier New', monospace;
             font-size: 16px;
@@ -629,6 +633,7 @@
 
                 <div class="button-group">
                     <button class="pause-button" id="pauseButton">⏸ 一時停止</button>
+                    <button class="reset-button" id="restartButton" style="display:none;">🔄 リスタート</button>
                     <button class="reset-button" id="resetButton">🏠 ホーム</button>
                 </div>
             </div>
@@ -772,24 +777,30 @@
 
             updateModeInfo() {
                 const modeInfo = document.getElementById('modeInfo');
+                const restartButton = document.getElementById('restartButton');
+                
                 switch(this.mode) {
                     case 'normal':
                         modeInfo.textContent = '📊 ノーマルモード';
+                        restartButton.style.display = 'none';
                         break;
                     case 'time20':
                         modeInfo.textContent = '⏱️ 20ライン タイムアタック';
+                        restartButton.style.display = 'block';
                         break;
                     case 'time50':
                         modeInfo.textContent = '⏱️ 50ライン タイムアタック';
+                        restartButton.style.display = 'block';
                         break;
                     case 'time100':
                         modeInfo.textContent = '⏱️ 100ライン タイムアタック';
+                        restartButton.style.display = 'block';
                         break;
                 }
             }
 
             startTimer() {
-                if (this.mode !== 'normal' && !this.startTime) {
+                if (!this.startTime) {
                     this.startTime = Date.now();
                     this.timerInterval = setInterval(() => {
                         if (!this.isPaused && !this.isGameOver) {
@@ -802,17 +813,17 @@
 
             updateTimeDisplay() {
                 const timeDisplay = document.getElementById('timeDisplay');
-                if (this.mode === 'normal') {
-                    timeDisplay.textContent = '';
-                    return;
-                }
-
+                
                 const totalSeconds = this.elapsedTime / 1000;
                 const minutes = Math.floor(totalSeconds / 60);
                 const seconds = Math.floor(totalSeconds % 60);
                 const milliseconds = Math.floor((totalSeconds % 1) * 1000);
                 
-                timeDisplay.textContent = `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+                if (this.mode === 'normal') {
+                    timeDisplay.textContent = `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                } else {
+                    timeDisplay.textContent = `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+                }
             }
 
             checkTimeAttackComplete() {
@@ -946,7 +957,7 @@
                 } else {
                     this.currentPiece = newPiece;
                     // 最初のピースが生成されたらタイマー開始
-                    if (!this.startTime && this.mode !== 'normal') {
+                    if (!this.startTime) {
                         this.startTimer();
                     }
                 }
@@ -959,12 +970,17 @@
                             const x = piece.position.x + j + offsetX;
                             const y = piece.position.y + i + offsetY;
 
+                            // 左右と下の境界チェック
                             if (x < 0 || x >= this.BOARD_WIDTH || y >= this.BOARD_HEIGHT) {
                                 return true;
                             }
 
-                            if (y >= 0 && this.board[y][x] !== null) {
-                                return true;
+                            // 上端（y < 0）はスポーン時のため衝突判定しない
+                            if (y >= 0 && y < this.BOARD_HEIGHT && x >= 0 && x < this.BOARD_WIDTH) {
+                                // boardが初期化されているか確認
+                                if (this.board && this.board[y] && this.board[y][x] !== null) {
+                                    return true;
+                                }
                             }
                         }
                     }
@@ -1466,6 +1482,12 @@
                     this.togglePause();
                 });
 
+                document.getElementById('restartButton').addEventListener('click', () => {
+                    if (confirm('ゲームをリスタートしますか？')) {
+                        this.reset();
+                    }
+                });
+
                 document.getElementById('resetButton').addEventListener('click', () => {
                     if (confirm('ホーム画面に戻りますか？')) {
                         this.goHome();
@@ -1487,6 +1509,38 @@
                 document.getElementById('homeScreen').classList.remove('hidden');
                 loadBestRecords();
                 showRanking('normal');
+            }
+
+            reset() {
+                clearInterval(this.gameTimer);
+                clearInterval(this.timerInterval);
+                
+                // 状態をリセット
+                this.board = [];
+                this.currentPiece = null;
+                this.nextPieceType = null;
+                this.score = 0;
+                this.level = 1;
+                this.totalLinesCleared = 0;
+                this.linesRemoved = 0;
+                this.isGameOver = false;
+                this.isPaused = false;
+                this.lastAction = '';
+                this.lastMoveWasRotation = false;
+                this.startTime = null;
+                this.elapsedTime = 0;
+                this.pieceBag = [];
+                
+                // オーバーレイを隠す
+                document.getElementById('gameOverOverlay').classList.add('hidden');
+                document.getElementById('pauseOverlay').classList.add('hidden');
+                document.getElementById('actionDisplay').innerHTML = '';
+                
+                // ゲームを再初期化
+                this.init();
+                this.updateDisplay();
+                this.updateModeInfo();
+                this.draw();
             }
 
             showGameOver() {
