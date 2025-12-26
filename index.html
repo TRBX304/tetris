@@ -1182,6 +1182,7 @@
                     return;
                 }
                 
+                // タイマー開始（最初のピース生成時ではなく、最初の操作時に開始したい場合は呼び出し元を調整）
                 this.startTime = Date.now();
                 this.timerInterval = setInterval(() => {
                     if (!this.isPaused && !this.isGameOver) {
@@ -1189,6 +1190,13 @@
                         this.updateTimeDisplay();
                     }
                 }, 10);
+            }
+
+            // 最初の操作時にタイマーを開始
+            startTimerOnFirstMove() {
+                if (!this.startTime && this.mode !== 'normal') {
+                    this.startTimer();
+                }
             }
 
             updateTimeDisplay() {
@@ -1298,7 +1306,12 @@
 
             fillPieceBag() {
                 const types = Object.keys(TETROMINO_TYPES);
-                this.pieceBag = types.sort(() => Math.random() - 0.5);
+                // Fisher-Yates シャッフルで完全ランダム化
+                this.pieceBag = [...types];
+                for (let i = this.pieceBag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.pieceBag[i], this.pieceBag[j]] = [this.pieceBag[j], this.pieceBag[i]];
+                }
             }
 
             getNextPiece() {
@@ -1376,8 +1389,6 @@
                     this.showGameOver();
                 } else {
                     this.currentPiece = newPiece;
-                    // 最初のピースが生成されたらタイマー開始（二重起動防止済み）
-                    this.startTimer();
                     // 状態をPLAYINGに戻す
                     this.gameState = 'PLAYING';
                 }
@@ -1411,6 +1422,9 @@
             moveDown(manual = false) {
                 if (!this.currentPiece || this.isGameOver) return;
 
+                // 最初の操作時にタイマー開始
+                this.startTimerOnFirstMove();
+
                 if (!this.checkCollision(this.currentPiece, 0, 1)) {
                     this.currentPiece.position.y++;
                     // 手動での下移動のみlastMoveWasRotationをリセット
@@ -1426,6 +1440,9 @@
             moveLeft() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
 
+                // 最初の操作時にタイマー開始
+                this.startTimerOnFirstMove();
+
                 if (!this.checkCollision(this.currentPiece, -1, 0)) {
                     this.currentPiece.position.x--;
                     this.lastMoveWasRotation = false;
@@ -1436,6 +1453,9 @@
             moveRight() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
 
+                // 最初の操作時にタイマー開始
+                this.startTimerOnFirstMove();
+
                 if (!this.checkCollision(this.currentPiece, 1, 0)) {
                     this.currentPiece.position.x++;
                     this.lastMoveWasRotation = false;
@@ -1445,6 +1465,9 @@
 
             rotate() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
+
+                // 最初の操作時にタイマー開始
+                this.startTimerOnFirstMove();
 
                 const rotated = this.currentPiece.rotate();
                 
@@ -1477,6 +1500,9 @@
             hardDrop() {
                 if (!this.currentPiece || this.isPaused || this.isGameOver) return;
 
+                // 最初の操作時にタイマー開始
+                this.startTimerOnFirstMove();
+
                 while (!this.checkCollision(this.currentPiece, 0, 1)) {
                     this.currentPiece.position.y++;
                 }
@@ -1503,26 +1529,12 @@
                     }
                 }
 
-                const linesCleared = this.clearLines();
-
-                // Tスピンボーナス
-                if (isTSpin && linesCleared > 0) {
-                    const bonus = linesCleared * 400 * this.level;
-                    this.score += bonus;
-                    const spinType = linesCleared === 1 ? 'SINGLE' : linesCleared === 2 ? 'DOUBLE' : 'TRIPLE';
-                    this.showAction(`T-SPIN ${spinType}! +${bonus}`);
-                } else if (linesCleared === 4) {
-                    // テトリス（4ライン同時消し）ボーナス
-                    const bonus = 800 * this.level;
-                    this.score += bonus;
-                    this.showAction(`TETRIS! +${bonus}`);
-                }
-
-                this.updateDisplay();
+                // 現在のピースをnullにして、ライン消去中の操作を防ぐ
+                this.currentPiece = null;
                 this.lastMoveWasRotation = false;
-                
-                // 新しいピースを生成
-                this.spawnNewPiece();
+
+                // ライン消去処理（非同期）
+                this.clearLines(isTSpin);
             }
 
             checkTSpin(piece) {
@@ -1553,8 +1565,8 @@
                 return filledCorners >= 3;
             }
 
-            clearLines() {
-                if (this.gameState === 'LINE_CLEARING') return 0;
+            clearLines(isTSpin = false) {
+                if (this.gameState === 'LINE_CLEARING') return;
 
                 let linesCleared = 0;
                 const linesToClear = [];
@@ -1596,15 +1608,30 @@
                         else if (linesCleared === 4) lineScore = 1600;
 
                         this.score += lineScore * (this.level + 1);
+                        
+                        // Tスピンボーナス
+                        if (isTSpin && linesCleared > 0) {
+                            const bonus = linesCleared * 400 * this.level;
+                            this.score += bonus;
+                            const spinType = linesCleared === 1 ? 'SINGLE' : linesCleared === 2 ? 'DOUBLE' : 'TRIPLE';
+                            this.showAction(`T-SPIN ${spinType}! +${bonus}`);
+                        } else if (linesCleared === 4) {
+                            // テトリス（4ライン同時消し）ボーナス
+                            const bonus = 800 * this.level;
+                            this.score += bonus;
+                            this.showAction(`TETRIS! +${bonus}`);
+                        }
+
                         this.linesRemoved += linesCleared;
 
                         // レベルアップロジック
-                        this.totalLinesCleared += linesCleared;
                         const newLevel = Math.floor(this.linesRemoved / 10) + 1;
-
                         if (newLevel > this.level) {
                             this.level = newLevel;
                         }
+
+                        // 表示を更新
+                        this.updateDisplay();
 
                         // タイムアタック完了チェック
                         this.checkTimeAttackComplete();
@@ -1612,11 +1639,15 @@
                         // 状態をPLAYINGに戻す
                         this.gameState = 'PLAYING';
                         
+                        // ライン消去完了後に新しいピースを生成
+                        this.spawnNewPiece();
+                        
                         this.draw();
                     }, 200);
+                } else {
+                    // ライン消去がない場合はすぐに新しいピースを生成
+                    this.spawnNewPiece();
                 }
-
-                return linesCleared;
             }
 
             flashLines(lines) {
