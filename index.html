@@ -332,9 +332,9 @@
         .dpad-btn {
             width: 50px;
             height: 50px;
-            background: rgba(58, 58, 58, 0.3);
-            border: 2px solid rgba(85, 85, 85, 0.5);
-            color: rgba(170, 170, 170, 0.8);
+            background: rgba(58, 58, 58, 0.5);
+            border: 2px solid rgba(85, 85, 85, 0.7);
+            color: rgba(255, 255, 255, 0.9);
             font-size: 20px;
             cursor: pointer;
             transition: all 0.1s;
@@ -342,11 +342,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(2px);
         }
 
         .dpad-btn:active {
-            background: rgba(42, 42, 42, 0.5);
+            background: rgba(42, 42, 42, 0.7);
             transform: scale(0.95);
         }
 
@@ -358,18 +358,18 @@
         .dpad-center {
             width: 50px;
             height: 50px;
-            background: rgba(26, 26, 26, 0.3);
-            border: 2px solid rgba(85, 85, 85, 0.5);
+            background: rgba(26, 26, 26, 0.5);
+            border: 2px solid rgba(85, 85, 85, 0.7);
             border-radius: 50%;
         }
 
         .dpad-center-btn {
             width: 50px;
             height: 50px;
-            background: rgba(26, 26, 26, 0.3);
-            border: 2px solid rgba(85, 85, 85, 0.5);
+            background: rgba(26, 26, 26, 0.5);
+            border: 2px solid rgba(85, 85, 85, 0.7);
             border-radius: 50%;
-            color: rgba(170, 170, 170, 0.8);
+            color: rgba(255, 255, 255, 0.9);
             font-size: 20px;
             cursor: pointer;
             transition: all 0.1s;
@@ -377,11 +377,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(2px);
         }
 
         .dpad-center-btn:active {
-            background: rgba(42, 42, 42, 0.5);
+            background: rgba(42, 42, 42, 0.7);
             transform: scale(0.95);
         }
 
@@ -774,14 +774,14 @@
             }
 
             .dpad-btn {
-                width: 45px;
-                height: 45px;
-                font-size: 16px;
+                width: 60px;
+                height: 60px;
+                font-size: 18px;
             }
 
             .dpad-empty, .dpad-center, .dpad-center-btn {
-                width: 45px;
-                height: 45px;
+                width: 60px;
+                height: 60px;
             }
 
             .button-controls {
@@ -1610,14 +1610,17 @@
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
                                     if (y >= 0) {
-                                        this.ctx.fillStyle = this.currentPiece.color + '30';
+                                        // 半透明の塗りつぶし
+                                        this.ctx.fillStyle = this.currentPiece.color + '40';
                                         this.ctx.fillRect(
                                             x * this.BLOCK_SIZE,
                                             y * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
-                                        this.ctx.strokeStyle = this.currentPiece.color + '60';
+                                        // より濃い縁取り
+                                        this.ctx.strokeStyle = this.currentPiece.color + 'AA';
+                                        this.ctx.lineWidth = 2;
                                         this.ctx.strokeRect(
                                             x * this.BLOCK_SIZE,
                                             y * this.BLOCK_SIZE,
@@ -1941,8 +1944,7 @@
                 this.gameTimer = null;
                 this.timerInterval = null;
                 
-                // 状態をリセット
-                this.board = [];
+                // すべての状態を完全にリセット
                 this.currentPiece = null;
                 this.nextPieceType = null;
                 this.score = 0;
@@ -1958,7 +1960,7 @@
                 this.startTime = null;
                 this.elapsedTime = 0;
                 
-                // ピースバッグを完全にリセット
+                // ピースバッグを完全にクリア
                 this.pieceBag = [];
                 
                 // オーバーレイを隠す
@@ -1967,7 +1969,7 @@
                 document.getElementById('actionDisplay').innerHTML = '';
                 document.getElementById('timeDisplay').textContent = '';
                 
-                // ボードを再初期化
+                // ボードを完全に再生成
                 this.board = Array(this.BOARD_HEIGHT).fill(null).map(() => 
                     Array(this.BOARD_WIDTH).fill(null)
                 );
@@ -1975,12 +1977,21 @@
                 // 新しいピースバッグを作成
                 this.fillPieceBag();
                 this.nextPieceType = this.getNextPiece();
-                this.spawnNewPiece();
+                
+                // 新しいゲームタイマーを開始
                 this.startGameTimer();
+                
+                // 最初のピースを生成
+                this.spawnNewPiece();
+                
+                // NEXTを描画
                 this.drawNext();
                 
+                // 表示を更新
                 this.updateDisplay();
                 this.updateModeInfo();
+                
+                // ボードを描画
                 this.draw();
             }
 
