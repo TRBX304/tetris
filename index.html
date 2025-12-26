@@ -879,6 +879,13 @@
                 <div class="best-time" id="normalBest">最高: - 点</div>
             </div>
             
+            <div class="mode-button" onclick="startGame('sprint1m')">
+                <h2>1分間スプリント</h2>
+                <p>60秒チャレンジ</p>
+                <p>ライン数を競う</p>
+                <div class="best-time" id="sprint1mBest">最高: - ライン</div>
+            </div>
+            
             <div class="mode-button" onclick="startGame('time10')">
                 <h2>10ライン</h2>
                 <p>タイムアタック</p>
@@ -912,6 +919,7 @@
             <h3>🏆 ランキング</h3>
             <div class="ranking-tabs">
                 <button class="ranking-tab active" onclick="showRanking('normal')">ノーマル</button>
+                <button class="ranking-tab" onclick="showRanking('sprint1m')">1分間</button>
                 <button class="ranking-tab" onclick="showRanking('time10')">10ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time20')">20ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time50')">50ライン</button>
@@ -1089,7 +1097,7 @@
 
         class TetrisGame {
             constructor(mode = 'normal') {
-                this.mode = mode; // 'normal', 'time20', 'time50', 'time100'
+                this.mode = mode; // 'normal', 'sprint1m', 'time10', 'time20', 'time50', 'time100'
                 this.BOARD_WIDTH = 10;
                 this.BOARD_HEIGHT = 20;
                 
@@ -1148,6 +1156,7 @@
                     case 'time20': return 20;
                     case 'time50': return 50;
                     case 'time100': return 100;
+                    case 'sprint1m': return Infinity; // 1分間で何ライン消せるか
                     default: return null;
                 }
             }
@@ -1160,6 +1169,10 @@
                     case 'normal':
                         modeInfo.textContent = '📊 ノーマルモード';
                         restartButton.style.display = 'none';
+                        break;
+                    case 'sprint1m':
+                        modeInfo.textContent = '⚡ 1分間スプリント';
+                        restartButton.style.display = 'block';
                         break;
                     case 'time10':
                         modeInfo.textContent = '⏱️ 10ライン タイムアタック';
@@ -1224,10 +1237,25 @@
             }
 
             checkTimeAttackComplete() {
+                // 1分間スプリントモード: 60秒経過でゲーム終了
+                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000) {
+                    this.isGameOver = true;
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
+                    this.stopTimer();
+                    this.saveRecord();
+                    this.showTimeAttackComplete();
+                    return;
+                }
+                
+                // 通常のタイムアタック: 目標ライン達成で終了
                 if (this.targetLines && this.linesRemoved >= this.targetLines) {
                     this.isGameOver = true;
-                    clearInterval(this.gameTimer);
-                    clearInterval(this.timerInterval);
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
+                    this.stopTimer();
                     this.saveRecord();
                     this.showTimeAttackComplete();
                 }
@@ -1249,12 +1277,16 @@
                 if (this.mode === 'normal') {
                     record.score = this.score;
                     delete record.time;
+                } else if (this.mode === 'sprint1m') {
+                    record.lines = this.linesRemoved;  // 消したライン数を記録
                 }
 
                 records[this.mode].push(record);
                 records[this.mode].sort((a, b) => {
                     if (this.mode === 'normal') {
                         return b.score - a.score;
+                    } else if (this.mode === 'sprint1m') {
+                        return b.lines - a.lines;  // ライン数が多い順
                     }
                     return a.time - b.time;
                 });
@@ -1264,19 +1296,29 @@
             }
 
             showTimeAttackComplete() {
-                const totalSeconds = this.elapsedTime / 1000;
-                const minutes = Math.floor(totalSeconds / 60);
-                const seconds = Math.floor(totalSeconds % 60);
-                const milliseconds = Math.floor((totalSeconds % 1) * 1000);
-                const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+                if (this.mode === 'sprint1m') {
+                    // 1分間スプリントモード: ライン数を表示
+                    document.getElementById('finalScore').textContent = `${this.linesRemoved} ライン`;
+                    document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    
+                    const title = document.querySelector('.game-over-title');
+                    title.textContent = '時間切れ!';
+                    title.style.color = '#00ff00';
+                } else {
+                    // タイムアタックモード: タイムを表示
+                    const totalSeconds = this.elapsedTime / 1000;
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = Math.floor(totalSeconds % 60);
+                    const milliseconds = Math.floor((totalSeconds % 1) * 1000);
+                    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
 
-                document.getElementById('finalScore').textContent = `${timeStr}`;
-                document.getElementById('gameOverOverlay').classList.remove('hidden');
-                
-                // タイトルを変更
-                const title = document.querySelector('.game-over-title');
-                title.textContent = 'COMPLETE!';
-                title.style.color = '#00ff00';
+                    document.getElementById('finalScore').textContent = `${timeStr}`;
+                    document.getElementById('gameOverOverlay').classList.remove('hidden');
+                    
+                    const title = document.querySelector('.game-over-title');
+                    title.textContent = 'COMPLETE!';
+                    title.style.color = '#00ff00';
+                }
             }
 
             formatTime(milliseconds) {
@@ -1828,7 +1870,7 @@
                 if (!this.nextPieceType) return;
 
                 const nextPiece = new Tetromino(this.nextPieceType);
-                const blockSize = 18;
+                const blockSize = 25;  // 18から25に拡大
                 const shape = nextPiece.shape;
                 
                 const totalWidth = shape[0].length * blockSize;
@@ -2191,6 +2233,11 @@
                 document.getElementById('normalBest').textContent = `最高: ${records.normal[0].score.toLocaleString()} 点`;
             }
             
+            // 1分間スプリント
+            if (records.sprint1m && records.sprint1m.length > 0) {
+                document.getElementById('sprint1mBest').textContent = `最高: ${records.sprint1m[0].lines} ライン`;
+            }
+            
             // タイムアタック
             ['time10', 'time20', 'time50', 'time100'].forEach(mode => {
                 if (records[mode] && records[mode].length > 0) {
@@ -2227,6 +2274,8 @@
                 let displayValue = '';
                 if (mode === 'normal') {
                     displayValue = `${record.score.toLocaleString()} 点`;
+                } else if (mode === 'sprint1m') {
+                    displayValue = `${record.lines} ライン`;
                 } else {
                     const totalSeconds = record.time / 1000;
                     const minutes = Math.floor(totalSeconds / 60);
