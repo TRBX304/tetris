@@ -154,6 +154,150 @@
             flex: 1;
         }
 
+        /* 操作切り替えトグル */
+        #controlTogglePanel {
+            padding: 10px;
+        }
+
+        #controlTogglePanel h3 {
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .toggle-label {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-label input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #555;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #00ffff;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-text {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        /* ボタン操作パネル */
+        .button-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 24px;
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border: 2px solid #00ffff;
+            border-radius: 12px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0, 255, 255, 0.5);
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(145deg, #3a3a4e, #2a2a3e);
+            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        /* ネオン効果 */
+        .neon-glow {
+            box-shadow: 
+                0 0 5px currentColor,
+                0 0 10px currentColor,
+                0 0 20px currentColor,
+                inset 0 0 5px rgba(255, 255, 255, 0.2);
+        }
+
+        /* ライン消去エフェクト */
+        @keyframes lineFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        @keyframes lineClear {
+            0% { 
+                transform: scaleX(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scaleX(1.1);
+                opacity: 0.5;
+            }
+            100% { 
+                transform: scaleX(0);
+                opacity: 0;
+            }
+        }
+
         button {
             font-family: 'Courier New', monospace;
             font-size: 16px;
@@ -424,6 +568,7 @@
                 gap: 10px;
                 width: 100%;
                 max-height: 100vh;
+                padding-bottom: 180px; /* ボタン操作スペース確保 */
             }
 
             h1 {
@@ -508,6 +653,24 @@
             .overlay-button {
                 font-size: 16px;
                 padding: 12px 24px;
+            }
+
+            .control-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+
+            #controlTogglePanel {
+                padding: 6px;
+            }
+
+            #controlTogglePanel h3 {
+                font-size: 10px;
+            }
+
+            .toggle-text {
+                font-size: 10px;
             }
         }
 
@@ -639,11 +802,35 @@
                     <div class="score-value level-value" id="linesDisplay">0</div>
                 </div>
 
+                <div class="panel-section" id="controlTogglePanel">
+                    <h3>操作方法</h3>
+                    <div class="toggle-container">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="controlToggle" onchange="toggleControlMode()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-text">ボタン</span>
+                    </div>
+                </div>
+
                 <div class="button-group">
                     <button class="pause-button" id="pauseButton">⏸ 一時停止</button>
                     <button class="reset-button" id="restartButton" style="display:none;">🔄 リスタート</button>
                     <button class="reset-button" id="resetButton">🏠 ホーム</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- ボタン操作パネル -->
+        <div id="buttonControls" class="button-controls hidden">
+            <div class="control-buttons">
+                <button class="control-btn" id="rotateBtn">🔄<br>回転</button>
+                <button class="control-btn" id="dropBtn">⬇️<br>落下</button>
+            </div>
+            <div class="control-buttons">
+                <button class="control-btn" id="leftBtn">⬅️</button>
+                <button class="control-btn" id="downBtn">⬇️</button>
+                <button class="control-btn" id="rightBtn">➡️</button>
             </div>
         </div>
     </div>
@@ -813,15 +1000,18 @@
             }
 
             startTimer() {
-                if (!this.startTime) {
-                    this.startTime = Date.now();
-                    this.timerInterval = setInterval(() => {
-                        if (!this.isPaused && !this.isGameOver) {
-                            this.elapsedTime = Date.now() - this.startTime;
-                            this.updateTimeDisplay();
-                        }
-                    }, 10);
+                // 既にタイマーが動いている場合は何もしない
+                if (this.timerInterval) {
+                    return;
                 }
+                
+                this.startTime = Date.now();
+                this.timerInterval = setInterval(() => {
+                    if (!this.isPaused && !this.isGameOver) {
+                        this.elapsedTime = Date.now() - this.startTime;
+                        this.updateTimeDisplay();
+                    }
+                }, 10);
             }
 
             updateTimeDisplay() {
@@ -969,10 +1159,8 @@
                     this.showGameOver();
                 } else {
                     this.currentPiece = newPiece;
-                    // 最初のピースが生成されたらタイマー開始
-                    if (!this.startTime) {
-                        this.startTimer();
-                    }
+                    // 最初のピースが生成されたらタイマー開始（二重起動防止済み）
+                    this.startTimer();
                 }
             }
 
@@ -1001,12 +1189,15 @@
                 return false;
             }
 
-            moveDown() {
+            moveDown(manual = false) {
                 if (!this.currentPiece || this.isGameOver) return;
 
                 if (!this.checkCollision(this.currentPiece, 0, 1)) {
                     this.currentPiece.position.y++;
-                    this.lastMoveWasRotation = false;
+                    // 手動での下移動のみlastMoveWasRotationをリセット
+                    if (manual) {
+                        this.lastMoveWasRotation = false;
+                    }
                 } else {
                     this.lockPiece();
                 }
@@ -1110,6 +1301,8 @@
 
                 this.updateDisplay();
                 this.lastMoveWasRotation = false;
+                
+                // 新しいピースを生成
                 this.spawnNewPiece();
             }
 
@@ -1143,46 +1336,84 @@
 
             clearLines() {
                 let linesCleared = 0;
-                const newBoard = [];
+                const linesToClear = [];
 
-                for (let row of this.board) {
-                    if (!row.every(cell => cell !== null)) {
-                        newBoard.push(row);
-                    } else {
+                // クリアするラインを特定
+                for (let y = 0; y < this.board.length; y++) {
+                    if (this.board[y].every(cell => cell !== null)) {
+                        linesToClear.push(y);
                         linesCleared++;
                     }
                 }
 
-                while (newBoard.length < this.BOARD_HEIGHT) {
-                    newBoard.unshift(Array(this.BOARD_WIDTH).fill(null));
-                }
-
-                this.board = newBoard;
-
-                // スコア計算（JSコード参照）
                 if (linesCleared > 0) {
-                    let lineScore = 25;
-                    if (linesCleared === 2) lineScore = 100;
-                    else if (linesCleared === 3) lineScore = 400;
-                    else if (linesCleared === 4) lineScore = 1600;
+                    // エフェクト: ラインを白く光らせる
+                    this.flashLines(linesToClear);
+                    
+                    // 少し待ってからラインを消去
+                    setTimeout(() => {
+                        const newBoard = [];
+                        for (let y = 0; y < this.board.length; y++) {
+                            if (!linesToClear.includes(y)) {
+                                newBoard.push(this.board[y]);
+                            }
+                        }
 
-                    this.score += lineScore * (this.level + 1);
-                    this.linesRemoved += linesCleared;
+                        while (newBoard.length < this.BOARD_HEIGHT) {
+                            newBoard.unshift(Array(this.BOARD_WIDTH).fill(null));
+                        }
 
-                    // レベルアップロジック
-                    this.totalLinesCleared += linesCleared;
-                    const newLevel = Math.floor(this.linesRemoved / 10) + 1;
+                        this.board = newBoard;
 
-                    if (newLevel > this.level) {
-                        this.level = newLevel;
-                        this.startGameTimer();
-                    }
+                        // スコア計算
+                        let lineScore = 25;
+                        if (linesCleared === 2) lineScore = 100;
+                        else if (linesCleared === 3) lineScore = 400;
+                        else if (linesCleared === 4) lineScore = 1600;
 
-                    // タイムアタック完了チェック
-                    this.checkTimeAttackComplete();
+                        this.score += lineScore * (this.level + 1);
+                        this.linesRemoved += linesCleared;
+
+                        // レベルアップロジック
+                        this.totalLinesCleared += linesCleared;
+                        const newLevel = Math.floor(this.linesRemoved / 10) + 1;
+
+                        if (newLevel > this.level) {
+                            this.level = newLevel;
+                            this.startGameTimer();
+                        }
+
+                        // タイムアタック完了チェック
+                        this.checkTimeAttackComplete();
+                        
+                        this.draw();
+                    }, 200);
                 }
 
                 return linesCleared;
+            }
+
+            flashLines(lines) {
+                // 光るエフェクト
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        for (const y of lines) {
+                            for (let x = 0; x < this.BOARD_WIDTH; x++) {
+                                if (i % 2 === 0) {
+                                    this.ctx.fillStyle = '#ffffff';
+                                } else {
+                                    this.ctx.fillStyle = this.board[y][x] || '#ffffff';
+                                }
+                                this.ctx.fillRect(
+                                    x * this.BLOCK_SIZE,
+                                    y * this.BLOCK_SIZE,
+                                    this.BLOCK_SIZE,
+                                    this.BLOCK_SIZE
+                                );
+                            }
+                        }
+                    }, i * 60);
+                }
             }
 
             showAction(text) {
@@ -1237,27 +1468,24 @@
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
                                     if (y >= 0) {
-                                        this.ctx.fillStyle = this.currentPiece.color + '40';
-                                        this.ctx.fillRect(
-                                            x * this.BLOCK_SIZE,
-                                            y * this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE
-                                        );
-                                        this.ctx.strokeStyle = this.currentPiece.color + '80';
+                                        // ゴーストは点線の枠のみ
+                                        this.ctx.strokeStyle = this.currentPiece.color;
+                                        this.ctx.lineWidth = 2;
+                                        this.ctx.setLineDash([5, 5]);
                                         this.ctx.strokeRect(
                                             x * this.BLOCK_SIZE,
                                             y * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
+                                        this.ctx.setLineDash([]);
                                     }
                                 }
                             }
                         }
                     }
 
-                    // 現在のピースを描画
+                    // 現在のピースを描画（ネオン効果付き）
                     for (let i = 0; i < this.currentPiece.shape.length; i++) {
                         for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
                             if (this.currentPiece.shape[i][j] === 1) {
@@ -1273,6 +1501,10 @@
             }
 
             drawBlock(x, y, color) {
+                // ネオン効果のためのグロー
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = color;
+                
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(
                     x * this.BLOCK_SIZE,
@@ -1280,6 +1512,17 @@
                     this.BLOCK_SIZE,
                     this.BLOCK_SIZE
                 );
+                
+                // インナーハイライト
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.fillRect(
+                    x * this.BLOCK_SIZE + 2,
+                    y * this.BLOCK_SIZE + 2,
+                    this.BLOCK_SIZE - 4,
+                    this.BLOCK_SIZE - 4
+                );
+                
+                this.ctx.shadowBlur = 0;
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 1;
                 this.ctx.strokeRect(
@@ -1414,7 +1657,7 @@
                         case 'ArrowDown':
                             e.preventDefault();
                             if (!this.isPaused) {
-                                this.moveDown();
+                                this.moveDown(true); // 手動操作
                             }
                             break;
                         case ' ':
@@ -1480,8 +1723,8 @@
                             // 上スワイプ - ハードドロップ
                             this.hardDrop();
                         } else {
-                            // 下スワイプ - 高速落下
-                            this.moveDown();
+                            // 下スワイプ - 高速落下（手動）
+                            this.moveDown(true);
                         }
                     }
                 });
@@ -1511,6 +1754,27 @@
                 document.getElementById('homeButton').addEventListener('click', () => {
                     this.goHome();
                 });
+
+                // ボタン操作のイベントリスナー
+                document.getElementById('leftBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.moveLeft();
+                });
+
+                document.getElementById('rightBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.moveRight();
+                });
+
+                document.getElementById('downBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.moveDown(true);
+                });
+
+                document.getElementById('rotateBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.rotate();
+                });
+
+                document.getElementById('dropBtn').addEventListener('click', () => {
+                    if (!this.isPaused && !this.isGameOver) this.hardDrop();
+                });
             }
 
             goHome() {
@@ -1519,14 +1783,18 @@
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 document.getElementById('pauseOverlay').classList.add('hidden');
+                document.getElementById('buttonControls').classList.add('hidden');
                 document.getElementById('homeScreen').classList.remove('hidden');
                 loadBestRecords();
                 showRanking('normal');
             }
 
             reset() {
+                // タイマーを完全に停止
                 clearInterval(this.gameTimer);
                 clearInterval(this.timerInterval);
+                this.gameTimer = null;
+                this.timerInterval = null;
                 
                 // 状態をリセット
                 this.board = [];
@@ -1540,14 +1808,18 @@
                 this.isPaused = false;
                 this.lastAction = '';
                 this.lastMoveWasRotation = false;
+                
+                // タイマーを完全にリセット
                 this.startTime = null;
                 this.elapsedTime = 0;
+                
                 this.pieceBag = [];
                 
                 // オーバーレイを隠す
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 document.getElementById('pauseOverlay').classList.add('hidden');
                 document.getElementById('actionDisplay').innerHTML = '';
+                document.getElementById('timeDisplay').textContent = '';
                 
                 // ゲームを再初期化
                 this.init();
@@ -1570,12 +1842,32 @@
 
         // ゲーム開始
         let game = null;
+        let controlMode = 'swipe'; // 'swipe' or 'button'
+
+        function toggleControlMode() {
+            const isButton = document.getElementById('controlToggle').checked;
+            const buttonControls = document.getElementById('buttonControls');
+            
+            if (isButton) {
+                controlMode = 'button';
+                buttonControls.classList.remove('hidden');
+            } else {
+                controlMode = 'swipe';
+                buttonControls.classList.add('hidden');
+            }
+        }
 
         function startGame(mode) {
             document.getElementById('homeScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
             document.getElementById('gameOverOverlay').classList.add('hidden');
             document.getElementById('pauseOverlay').classList.add('hidden');
+            
+            // ボタン操作の状態を復元
+            const isButton = document.getElementById('controlToggle').checked;
+            if (isButton) {
+                document.getElementById('buttonControls').classList.remove('hidden');
+            }
             
             game = new TetrisGame(mode);
         }
