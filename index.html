@@ -306,24 +306,14 @@
         .button-controls {
             position: fixed;
             bottom: 20px;
-            left: 0;
-            right: 0;
+            right: 30px;
             display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
+            justify-content: flex-end;
             z-index: 100;
             pointer-events: none;
         }
 
-        .gameboy-controls {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            pointer-events: none;
-        }
-
-        .gameboy-controls > * {
+        .dpad-container {
             pointer-events: auto;
         }
 
@@ -393,49 +383,6 @@
         .dpad-center-btn:active {
             background: rgba(42, 42, 42, 0.5);
             transform: scale(0.95);
-        }
-
-        /* A/Bボタン */
-        .ab-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            align-items: flex-end;
-        }
-
-        .ab-btn {
-            width: 70px;
-            height: 70px;
-            background: rgba(74, 74, 74, 0.3);
-            border: 3px solid rgba(102, 102, 102, 0.5);
-            border-radius: 50%;
-            color: rgba(221, 221, 221, 0.9);
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.1s;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            line-height: 1.2;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(5px);
-        }
-
-        .ab-btn:active {
-            background: rgba(58, 58, 58, 0.5);
-            transform: scale(0.95);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-
-        #bBtn {
-            transform: translateX(-10px);
-        }
-
-        #aBtn {
-            transform: translateX(10px);
         }
 
         /* ネオン効果 */
@@ -826,32 +773,20 @@
                 padding: 12px 24px;
             }
 
-            .control-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 20px;
-            }
-
-            .gameboy-controls {
-                gap: 40px;
-                padding: 15px;
-            }
-
             .dpad-btn {
-                width: 40px;
-                height: 40px;
+                width: 45px;
+                height: 45px;
                 font-size: 16px;
             }
 
-            .dpad-empty, .dpad-center {
-                width: 40px;
-                height: 40px;
+            .dpad-empty, .dpad-center, .dpad-center-btn {
+                width: 45px;
+                height: 45px;
             }
 
-            .ab-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 16px;
+            .button-controls {
+                right: 20px;
+                bottom: 15px;
             }
 
             #controlTogglePanel {
@@ -1019,12 +954,12 @@
 
         <!-- ボタン操作パネル -->
         <div id="buttonControls" class="button-controls hidden">
-            <div class="gameboy-controls">
+            <div class="dpad-container">
                 <!-- 十字キー -->
                 <div class="dpad">
                     <div class="dpad-row">
                         <div class="dpad-empty"></div>
-                        <button class="dpad-btn" id="upBtn">⬇️<br><span style="font-size:10px;">落下</span></button>
+                        <button class="dpad-btn" id="upBtn">🔄<br><span style="font-size:10px;">回転</span></button>
                         <div class="dpad-empty"></div>
                     </div>
                     <div class="dpad-row">
@@ -1037,11 +972,6 @@
                         <button class="dpad-btn" id="downBtn2">⬇️<br><span style="font-size:10px;">落下</span></button>
                         <div class="dpad-empty"></div>
                     </div>
-                </div>
-                
-                <!-- A/Bボタン -->
-                <div class="ab-buttons">
-                    <button class="ab-btn" id="bBtn">B<br><span style="font-size:10px;">回転</span></button>
                 </div>
             </div>
         </div>
@@ -1984,15 +1914,11 @@
                 });
 
                 document.getElementById('upBtn').addEventListener('click', () => {
-                    if (!this.isPaused && !this.isGameOver) this.hardDrop();
+                    if (!this.isPaused && !this.isGameOver) this.rotate();
                 });
 
                 document.getElementById('downBtn2').addEventListener('click', () => {
                     if (!this.isPaused && !this.isGameOver) this.hardDrop();
-                });
-
-                document.getElementById('bBtn').addEventListener('click', () => {
-                    if (!this.isPaused && !this.isGameOver) this.rotate();
                 });
             }
 
