@@ -261,7 +261,7 @@
 
         .mode-selection {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin-bottom: 40px;
         }
@@ -391,7 +391,7 @@
             }
 
             .mode-selection {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
                 gap: 15px;
             }
 
@@ -565,6 +565,13 @@
                 <div class="best-time" id="normalBest">最高: - 点</div>
             </div>
             
+            <div class="mode-button" onclick="startGame('time10')">
+                <h2>10ライン</h2>
+                <p>タイムアタック</p>
+                <p>10ライン消去</p>
+                <div class="best-time" id="time10Best">記録: --:--.---</div>
+            </div>
+            
             <div class="mode-button" onclick="startGame('time20')">
                 <h2>20ライン</h2>
                 <p>タイムアタック</p>
@@ -591,6 +598,7 @@
             <h3>🏆 ランキング</h3>
             <div class="ranking-tabs">
                 <button class="ranking-tab active" onclick="showRanking('normal')">ノーマル</button>
+                <button class="ranking-tab" onclick="showRanking('time10')">10ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time20')">20ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time50')">50ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time100')">100ライン</button>
@@ -768,6 +776,7 @@
 
             getTargetLines() {
                 switch(this.mode) {
+                    case 'time10': return 10;
                     case 'time20': return 20;
                     case 'time50': return 50;
                     case 'time100': return 100;
@@ -783,6 +792,10 @@
                     case 'normal':
                         modeInfo.textContent = '📊 ノーマルモード';
                         restartButton.style.display = 'none';
+                        break;
+                    case 'time10':
+                        modeInfo.textContent = '⏱️ 10ライン タイムアタック';
+                        restartButton.style.display = 'block';
                         break;
                     case 'time20':
                         modeInfo.textContent = '⏱️ 20ライン タイムアタック';
@@ -1576,7 +1589,7 @@
             }
             
             // タイムアタック
-            ['time20', 'time50', 'time100'].forEach(mode => {
+            ['time10', 'time20', 'time50', 'time100'].forEach(mode => {
                 if (records[mode] && records[mode].length > 0) {
                     const time = records[mode][0].time;
                     const totalSeconds = time / 1000;
