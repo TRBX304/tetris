@@ -1237,21 +1237,10 @@
             }
 
             checkTimeAttackComplete() {
-                // 1分間スプリントモード: 60秒経過でゲーム終了
-                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000) {
-                    this.isGameOver = true;
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
-                    }
-                    this.stopTimer();
-                    this.saveRecord();
-                    this.showTimeAttackComplete();
-                    return;
-                }
-                
-                // 通常のタイムアタック: 目標ライン達成で終了
+                // タイムアタックモード: 目標ライン達成で終了
                 if (this.targetLines && this.linesRemoved >= this.targetLines) {
                     this.isGameOver = true;
+                    this.gameState = 'GAME_OVER';
                     if (this.animationFrameId) {
                         cancelAnimationFrame(this.animationFrameId);
                     }
@@ -1401,6 +1390,19 @@
                 if (!this.timerStarted && this.gameState === 'PLAYING' && this.currentPiece) {
                     this.startTimer();
                     this.timerStarted = true;
+                }
+                
+                // 1分間スプリントモード: 常時タイマーチェック
+                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000 && !this.isGameOver) {
+                    this.isGameOver = true;
+                    this.gameState = 'GAME_OVER';
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
+                    this.stopTimer();
+                    this.saveRecord();
+                    this.showTimeAttackComplete();
+                    return;
                 }
                 
                 // 落下速度の計算（レベルに応じて変化）
