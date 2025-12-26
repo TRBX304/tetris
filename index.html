@@ -302,6 +302,28 @@
             color: #aaa;
         }
 
+        /* スワイプ操作説明 */
+        .swipe-instructions {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 6px;
+            font-size: 10px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .swipe-instructions.hidden {
+            display: none;
+        }
+
+        .swipe-title {
+            color: #aaa;
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+
         /* ボタン操作パネル */
         .button-controls {
             position: fixed;
@@ -332,9 +354,9 @@
         .dpad-btn {
             width: 50px;
             height: 50px;
-            background: rgba(58, 58, 58, 0.5);
-            border: 2px solid rgba(85, 85, 85, 0.7);
-            color: rgba(255, 255, 255, 0.9);
+            background: rgba(58, 58, 58, 0.35);
+            border: 2px solid rgba(120, 120, 120, 0.8);
+            color: rgba(255, 255, 255, 0.95);
             font-size: 20px;
             cursor: pointer;
             transition: all 0.1s;
@@ -342,11 +364,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(2px);
         }
 
         .dpad-btn:active {
-            background: rgba(42, 42, 42, 0.7);
+            background: rgba(80, 80, 80, 0.6);
             transform: scale(0.95);
         }
 
@@ -358,18 +379,18 @@
         .dpad-center {
             width: 50px;
             height: 50px;
-            background: rgba(26, 26, 26, 0.5);
-            border: 2px solid rgba(85, 85, 85, 0.7);
+            background: rgba(26, 26, 26, 0.35);
+            border: 2px solid rgba(120, 120, 120, 0.8);
             border-radius: 50%;
         }
 
         .dpad-center-btn {
             width: 50px;
             height: 50px;
-            background: rgba(26, 26, 26, 0.5);
-            border: 2px solid rgba(85, 85, 85, 0.7);
+            background: rgba(26, 26, 26, 0.35);
+            border: 2px solid rgba(120, 120, 120, 0.8);
             border-radius: 50%;
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(255, 255, 255, 0.95);
             font-size: 20px;
             cursor: pointer;
             transition: all 0.1s;
@@ -377,11 +398,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(2px);
         }
 
         .dpad-center-btn:active {
-            background: rgba(42, 42, 42, 0.7);
+            background: rgba(80, 80, 80, 0.6);
             transform: scale(0.95);
         }
 
@@ -774,14 +794,14 @@
             }
 
             .dpad-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 18px;
+                width: 70px;
+                height: 70px;
+                font-size: 20px;
             }
 
             .dpad-empty, .dpad-center, .dpad-center-btn {
-                width: 60px;
-                height: 60px;
+                width: 70px;
+                height: 70px;
             }
 
             .button-controls {
@@ -941,6 +961,13 @@
                             <span class="toggle-slider"></span>
                         </label>
                         <span class="toggle-text">ボタン</span>
+                    </div>
+                    <div class="swipe-instructions" id="swipeInstructions">
+                        <div class="swipe-title">スワイプ操作</div>
+                        <div>タップ: 回転</div>
+                        <div>← →: 移動</div>
+                        <div>↑: 一気に落下</div>
+                        <div>↓: 高速落下</div>
                     </div>
                 </div>
 
@@ -2014,13 +2041,16 @@
         function toggleControlMode() {
             const isButton = document.getElementById('controlToggle').checked;
             const buttonControls = document.getElementById('buttonControls');
+            const swipeInstructions = document.getElementById('swipeInstructions');
             
             if (isButton) {
                 controlMode = 'button';
                 buttonControls.classList.remove('hidden');
+                swipeInstructions.classList.add('hidden');
             } else {
                 controlMode = 'swipe';
                 buttonControls.classList.add('hidden');
+                swipeInstructions.classList.remove('hidden');
             }
         }
 
