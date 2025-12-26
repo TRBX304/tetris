@@ -639,7 +639,7 @@
         <div class="overlay-content game-over-overlay">
             <div class="overlay-title game-over-title">GAME OVER</div>
             <div class="overlay-score">最終スコア: <span id="finalScore">0</span></div>
-            <button class="overlay-button" onclick="game.goHome()">🏠 ホームに戻る</button>
+            <button class="overlay-button" id="homeButton">🏠 ホームに戻る</button>
         </div>
     </div>
 
@@ -1471,12 +1471,19 @@
                         this.goHome();
                     }
                 });
+
+                // ゲームオーバー画面のホームボタン
+                document.getElementById('homeButton').addEventListener('click', () => {
+                    this.goHome();
+                });
             }
 
             goHome() {
                 clearInterval(this.gameTimer);
                 clearInterval(this.timerInterval);
                 document.getElementById('gameScreen').classList.add('hidden');
+                document.getElementById('gameOverOverlay').classList.add('hidden');
+                document.getElementById('pauseOverlay').classList.add('hidden');
                 document.getElementById('homeScreen').classList.remove('hidden');
                 loadBestRecords();
                 showRanking('normal');
