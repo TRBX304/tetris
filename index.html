@@ -470,7 +470,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(15, 23, 42, 0.5);
+            background-color: rgba(15, 23, 42, 0.75);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -918,12 +918,12 @@
         <div class="rankings">
             <h3>🏆 ランキング</h3>
             <div class="ranking-tabs">
-                <button class="ranking-tab active" onclick="showRanking('normal')">ノーマル</button>
-                <button class="ranking-tab" onclick="showRanking('sprint1m')">1分間</button>
-                <button class="ranking-tab" onclick="showRanking('time10')">10ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time20')">20ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time50')">50ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time100')">100ライン</button>
+                <button class="ranking-tab active" onclick="showRanking('normal', event)">ノーマル</button>
+                <button class="ranking-tab" onclick="showRanking('sprint1m', event)">1分間</button>
+                <button class="ranking-tab" onclick="showRanking('time10', event)">10ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time20', event)">20ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time50', event)">50ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time100', event)">100ライン</button>
             </div>
             <div class="ranking-list" id="rankingList"></div>
         </div>
@@ -1099,9 +1099,7 @@
             constructor(mode = 'normal') {
                 this.mode = mode; // 'normal', 'sprint1m', 'time10', 'time20', 'time50', 'time100'
                 this.BOARD_WIDTH = 10;
-                this.BOARD_HEIGHT = 24;  // 合計24行（可視20行 + バッファ4行）
-                this.VISIBLE_ROWS = 20;  // 可視領域は20行
-                this.BUFFER_ROWS = 4;    // 上部バッファ4行
+                this.BOARD_HEIGHT = 20;
                 
                 // ゲーム状態（ステートマシン）
                 this.gameState = 'PLAYING'; // 'PLAYING', 'LINE_CLEARING', 'SPAWNING', 'GAME_OVER', 'PAUSED'
@@ -1112,7 +1110,7 @@
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.canvas.width = this.BOARD_WIDTH * this.BLOCK_SIZE;
-                this.canvas.height = this.VISIBLE_ROWS * this.BLOCK_SIZE; // 可視領域のみ描画
+                this.canvas.height = this.BOARD_HEIGHT * this.BLOCK_SIZE;
 
                 this.nextCanvas = document.getElementById('nextCanvas');
                 this.nextCtx = this.nextCanvas.getContext('2d');
@@ -1142,6 +1140,7 @@
                 // ライン消去エフェクト用
                 this.flashingLines = [];
                 this.flashCounter = 0;
+                this.lineClearData = null;  // ライン消去データ
                 
                 // requestAnimationFrameベースのゲームループ用
                 this.lastUpdateTime = 0;
@@ -1239,21 +1238,10 @@
             }
 
             checkTimeAttackComplete() {
-                // 1分間スプリントモード: 60秒経過でゲーム終了
-                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000) {
-                    this.isGameOver = true;
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
-                    }
-                    this.stopTimer();
-                    this.saveRecord();
-                    this.showTimeAttackComplete();
-                    return;
-                }
-                
-                // 通常のタイムアタック: 目標ライン達成で終了
+                // タイムアタックモード: 目標ライン達成で終了
                 if (this.targetLines && this.linesRemoved >= this.targetLines) {
                     this.isGameOver = true;
+                    this.gameState = 'GAME_OVER';
                     if (this.animationFrameId) {
                         cancelAnimationFrame(this.animationFrameId);
                     }
@@ -1399,20 +1387,48 @@
             }
 
             update(deltaTime) {
+                // 1分間スプリントモード: 最優先でタイマーチェック（どの状態でも実行）
+                if (this.mode === 'sprint1m' && this.timerStarted && this.elapsedTime >= 60000 && !this.isGameOver) {
+                    this.isGameOver = true;
+                    this.gameState = 'GAME_OVER';
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
+                    this.stopTimer();
+                    this.saveRecord();
+                    this.showTimeAttackComplete();
+                    return;
+                }
+                
                 // タイマーを状態依存で開始（入力から完全に切り離す）
                 if (!this.timerStarted && this.gameState === 'PLAYING' && this.currentPiece) {
                     this.startTimer();
                     this.timerStarted = true;
                 }
                 
-                // 落下速度の計算（レベルに応じて変化）
-                const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
+                // LINE_CLEARING状態の処理（フレームベース）
+                if (this.gameState === 'LINE_CLEARING') {
+                    if (this.lineClearData) {
+                        this.lineClearData.frameCount++;
+                        // 12フレーム（約200ms）待ってからライン消去完了
+                        if (this.lineClearData.frameCount >= 12) {
+                            this.completeClearLines();
+                        }
+                    }
+                    return; // LINE_CLEARING中は落下処理しない
+                }
                 
-                this.dropTimer += deltaTime;
-                
-                if (this.dropTimer >= dropInterval) {
-                    this.dropTimer = 0;
-                    this.moveDown();
+                // PLAYING状態の処理
+                if (this.gameState === 'PLAYING') {
+                    // 落下速度の計算（レベルに応じて変化）
+                    const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
+                    
+                    this.dropTimer += deltaTime;
+                    
+                    if (this.dropTimer >= dropInterval) {
+                        this.dropTimer = 0;
+                        this.moveDown();
+                    }
                 }
             }
 
@@ -1435,39 +1451,22 @@
                 this.nextPieceType = this.getNextPiece();
                 this.drawNext();
 
-                // 新しいピースがスポーン可能かチェック
                 if (this.checkCollision(newPiece, 0, 0)) {
-                    // スポーン時に衝突する場合、可視領域にブロックがあるかチェック
-                    let hasBlockInVisibleArea = false;
-                    for (let y = this.BUFFER_ROWS; y < this.BOARD_HEIGHT; y++) {
-                        for (let x = 0; x < this.BOARD_WIDTH; x++) {
-                            if (this.board[y][x] !== null) {
-                                hasBlockInVisibleArea = true;
-                                break;
-                            }
-                        }
-                        if (hasBlockInVisibleArea) break;
+                    this.isGameOver = true;
+                    this.gameState = 'GAME_OVER';
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
                     }
-                    
-                    // 可視領域にブロックがある場合のみゲームオーバー
-                    if (hasBlockInVisibleArea) {
-                        this.isGameOver = true;
-                        this.gameState = 'GAME_OVER';
-                        if (this.animationFrameId) {
-                            cancelAnimationFrame(this.animationFrameId);
-                        }
-                        clearInterval(this.timerInterval);
-                        if (this.mode === 'normal') {
-                            this.saveRecord();
-                        }
-                        this.showGameOver();
-                        return;
+                    clearInterval(this.timerInterval);
+                    if (this.mode === 'normal') {
+                        this.saveRecord();
                     }
+                    this.showGameOver();
+                } else {
+                    this.currentPiece = newPiece;
+                    // 状態をPLAYINGに戻す
+                    this.gameState = 'PLAYING';
                 }
-                
-                this.currentPiece = newPiece;
-                // 状態をPLAYINGに戻す
-                this.gameState = 'PLAYING';
             }
 
             checkCollision(piece, offsetX, offsetY) {
@@ -1643,74 +1642,81 @@
                 if (linesCleared > 0) {
                     // 状態をLINE_CLEARINGに変更（この間は他の処理をブロック）
                     this.gameState = 'LINE_CLEARING';
+                    this.lineClearData = {
+                        lines: linesToClear,
+                        isTSpin: isTSpin,
+                        linesCleared: linesCleared,
+                        frameCount: 0
+                    };
                     
                     // エフェクト: ラインを白く光らせる
                     this.flashLines(linesToClear);
-                    
-                    // 少し待ってからラインを消去
-                    setTimeout(() => {
-                        const newBoard = [];
-                        for (let y = 0; y < this.board.length; y++) {
-                            if (!linesToClear.includes(y)) {
-                                newBoard.push(this.board[y]);
-                            }
-                        }
-
-                        while (newBoard.length < this.BOARD_HEIGHT) {
-                            newBoard.unshift(Array(this.BOARD_WIDTH).fill(null));
-                        }
-
-                        this.board = newBoard;
-
-                        // スコア計算
-                        let lineScore = 25;
-                        if (linesCleared === 2) lineScore = 100;
-                        else if (linesCleared === 3) lineScore = 400;
-                        else if (linesCleared === 4) lineScore = 1600;
-
-                        this.score += lineScore * (this.level + 1);
-                        
-                        // Tスピンボーナス
-                        if (isTSpin && linesCleared > 0) {
-                            const bonus = linesCleared * 400 * this.level;
-                            this.score += bonus;
-                            const spinType = linesCleared === 1 ? 'SINGLE' : linesCleared === 2 ? 'DOUBLE' : 'TRIPLE';
-                            this.showAction(`T-SPIN ${spinType}! +${bonus}`);
-                        } else if (linesCleared === 4) {
-                            // テトリス（4ライン同時消し）ボーナス
-                            const bonus = 800 * this.level;
-                            this.score += bonus;
-                            this.showAction(`TETRIS! +${bonus}`);
-                        }
-
-                        this.linesRemoved += linesCleared;
-
-                        // レベルアップロジック
-                        const newLevel = Math.floor(this.linesRemoved / 10) + 1;
-                        if (newLevel > this.level) {
-                            this.level = newLevel;
-                        }
-
-                        // 表示を更新
-                        this.updateDisplay();
-
-                        // タイムアタック完了チェック
-                        this.checkTimeAttackComplete();
-                        
-                        // 状態をPLAYINGに戻す
-                        this.gameState = 'PLAYING';
-                        this.flashingLines = [];
-                        this.flashCounter = 0;
-                        
-                        // ライン消去完了後に新しいピースを生成
-                        this.spawnNewPiece();
-                        
-                        this.draw();
-                    }, 200);
                 } else {
                     // ライン消去がない場合はすぐに新しいピースを生成
                     this.spawnNewPiece();
                 }
+            }
+            
+            // ライン消去処理の完了（フレームベース）
+            completeClearLines() {
+                const data = this.lineClearData;
+                
+                const newBoard = [];
+                for (let y = 0; y < this.board.length; y++) {
+                    if (!data.lines.includes(y)) {
+                        newBoard.push(this.board[y]);
+                    }
+                }
+
+                while (newBoard.length < this.BOARD_HEIGHT) {
+                    newBoard.unshift(Array(this.BOARD_WIDTH).fill(null));
+                }
+
+                this.board = newBoard;
+
+                // スコア計算
+                let lineScore = 25;
+                if (data.linesCleared === 2) lineScore = 100;
+                else if (data.linesCleared === 3) lineScore = 400;
+                else if (data.linesCleared === 4) lineScore = 1600;
+
+                this.score += lineScore * (this.level + 1);
+                
+                // Tスピンボーナス
+                if (data.isTSpin && data.linesCleared > 0) {
+                    const bonus = data.linesCleared * 400 * this.level;
+                    this.score += bonus;
+                    const spinType = data.linesCleared === 1 ? 'SINGLE' : data.linesCleared === 2 ? 'DOUBLE' : 'TRIPLE';
+                    this.showAction(`T-SPIN ${spinType}! +${bonus}`);
+                } else if (data.linesCleared === 4) {
+                    // テトリス（4ライン同時消し）ボーナス
+                    const bonus = 800 * this.level;
+                    this.score += bonus;
+                    this.showAction(`TETRIS! +${bonus}`);
+                }
+
+                this.linesRemoved += data.linesCleared;
+
+                // レベルアップロジック
+                const newLevel = Math.floor(this.linesRemoved / 10) + 1;
+                if (newLevel > this.level) {
+                    this.level = newLevel;
+                }
+
+                // 表示を更新
+                this.updateDisplay();
+
+                // タイムアタック完了チェック
+                this.checkTimeAttackComplete();
+                
+                // 状態をPLAYINGに戻す
+                this.gameState = 'PLAYING';
+                this.flashingLines = [];
+                this.flashCounter = 0;
+                this.lineClearData = null;
+                
+                // ライン消去完了後に新しいピースを生成
+                this.spawnNewPiece();
             }
 
             flashLines(lines) {
@@ -1750,12 +1756,9 @@
                 this.ctx.fillStyle = '#1e293b';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-                // ボード上の固定されたブロックを描画（可視領域のみ）
-                for (let y = this.BUFFER_ROWS; y < this.BOARD_HEIGHT; y++) {
+                // ボード上の固定されたブロックを描画
+                for (let y = 0; y < this.BOARD_HEIGHT; y++) {
                     for (let x = 0; x < this.BOARD_WIDTH; x++) {
-                        // 可視領域でのY座標を計算（バッファ行を引く）
-                        const visibleY = y - this.BUFFER_ROWS;
-                        
                         if (this.board[y][x]) {
                             // フラッシュ対象のラインは白く光らせる（1回だけ）
                             if (this.gameState === 'LINE_CLEARING' && 
@@ -1766,16 +1769,16 @@
                                 this.ctx.shadowColor = '#ffffff';
                                 this.ctx.fillRect(
                                     x * this.BLOCK_SIZE,
-                                    visibleY * this.BLOCK_SIZE,
+                                    y * this.BLOCK_SIZE,
                                     this.BLOCK_SIZE,
                                     this.BLOCK_SIZE
                                 );
                                 this.ctx.shadowBlur = 0;
                             } else {
-                                this.drawBlock(x, visibleY, this.board[y][x]);
+                                this.drawBlock(x, y, this.board[y][x]);
                             }
                         } else {
-                            this.drawEmptyBlock(x, visibleY);
+                            this.drawEmptyBlock(x, y);
                         }
                     }
                 }
@@ -1794,14 +1797,12 @@
                                 if (ghost.shape[i][j] === 1) {
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
-                                    // 可視領域内のみ描画
-                                    if (y >= this.BUFFER_ROWS) {
-                                        const visibleY = y - this.BUFFER_ROWS;
+                                    if (y >= 0) {
                                         // 半透明の塗りつぶし
                                         this.ctx.fillStyle = this.currentPiece.color + '40';
                                         this.ctx.fillRect(
                                             x * this.BLOCK_SIZE,
-                                            visibleY * this.BLOCK_SIZE,
+                                            y * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
@@ -1810,7 +1811,7 @@
                                         this.ctx.lineWidth = 2;
                                         this.ctx.strokeRect(
                                             x * this.BLOCK_SIZE,
-                                            visibleY * this.BLOCK_SIZE,
+                                            y * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
@@ -1820,16 +1821,14 @@
                         }
                     }
 
-                    // 現在のピースを描画（ネオン効果付き、可視領域のみ）
+                    // 現在のピースを描画（ネオン効果付き）
                     for (let i = 0; i < this.currentPiece.shape.length; i++) {
                         for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
                             if (this.currentPiece.shape[i][j] === 1) {
                                 const x = this.currentPiece.position.x + j;
                                 const y = this.currentPiece.position.y + i;
-                                // 可視領域内のみ描画
-                                if (y >= this.BUFFER_ROWS) {
-                                    const visibleY = y - this.BUFFER_ROWS;
-                                    this.drawBlock(x, visibleY, this.currentPiece.color);
+                                if (y >= 0) {
+                                    this.drawBlock(x, y, this.currentPiece.color);
                                 }
                             }
                         }
@@ -1944,11 +1943,6 @@
                     pauseButton.textContent = '⏸ 一時停止';
                     pauseOverlay.onclick = null;
                 }
-            }
-
-            showGameOver() {
-                document.getElementById('finalScore').textContent = this.score.toLocaleString();
-                document.getElementById('gameOverOverlay').classList.remove('hidden');
             }
 
             goHome() {
@@ -2278,12 +2272,14 @@
             });
         }
 
-        function showRanking(mode) {
+        function showRanking(mode, event) {
             // タブの切り替え
-            document.querySelectorAll('.ranking-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                document.querySelectorAll('.ranking-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                event.target.classList.add('active');
+            }
             
             const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
             const rankingList = document.getElementById('rankingList');
@@ -2319,13 +2315,6 @@
                 `;
             }).join('');
         }
-
-        // 初期化
-        window.addEventListener('load', () => {
-            loadBestRecords();
-            showRanking('normal');
-            createStarField();
-        });
 
         // 星座風背景の生成
         function createStarField() {
@@ -2399,6 +2388,19 @@
                     });
             });
         }
+
+        // グローバルスコープに公開（HTMLのonclick属性から呼べるように）
+        window.startGame = startGame;
+        window.toggleControlMode = toggleControlMode;
+        window.showRanking = showRanking;
+        window.loadBestRecords = loadBestRecords;
+
+        // 初期化
+        window.addEventListener('load', () => {
+            loadBestRecords();
+            showRanking('normal');
+            createStarField();
+        });
     </script>
 </body>
 </html>
