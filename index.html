@@ -943,17 +943,17 @@
             <div class="side-panel">
                 <div class="panel-section">
                     <h3>NEXT</h3>
-                    <canvas id="nextCanvas" width="100" height="100"></canvas>
-                </div>
-
-                <div class="panel-section score-display">
-                    <div class="score-label">レベル</div>
-                    <div class="score-value level-value" id="levelDisplay">1</div>
+                    <canvas id="nextCanvas" width="120" height="120"></canvas>
                 </div>
 
                 <div class="panel-section score-display">
                     <div class="score-label">スコア</div>
                     <div class="score-value" id="scoreDisplay">0</div>
+                </div>
+
+                <div class="panel-section score-display">
+                    <div class="score-label">レベル</div>
+                    <div class="score-value level-value" id="levelDisplay">1</div>
                 </div>
 
                 <div class="panel-section score-display">
@@ -1029,49 +1029,68 @@
     </div>
 
     <script>
+        // ===========================================
+        // 定数定義
+        // ===========================================
         const TETROMINO_TYPES = {
-            I: {
-                shape: [[1, 1, 1, 1]],
-                color: '#00ffff'
-            },
-            O: {
-                shape: [[1, 1], [1, 1]],
-                color: '#ffff00'
-            },
-            T: {
-                shape: [[0, 1, 0], [1, 1, 1]],
-                color: '#800080'
-            },
-            S: {
-                shape: [[0, 1, 1], [1, 1, 0]],
-                color: '#00ff00'
-            },
-            Z: {
-                shape: [[1, 1, 0], [0, 1, 1]],
-                color: '#ff0000'
-            },
-            J: {
-                shape: [[1, 0, 0], [1, 1, 1]],
-                color: '#0000ff'
-            },
-            L: {
-                shape: [[0, 0, 1], [1, 1, 1]],
-                color: '#ff8800'
-            }
+            I: { shape: [[1, 1, 1, 1]], color: '#00ffff' },
+            O: { shape: [[1, 1], [1, 1]], color: '#ffff00' },
+            T: { shape: [[0, 1, 0], [1, 1, 1]], color: '#800080' },
+            S: { shape: [[0, 1, 1], [1, 1, 0]], color: '#00ff00' },
+            Z: { shape: [[1, 1, 0], [0, 1, 1]], color: '#ff0000' },
+            J: { shape: [[1, 0, 0], [1, 1, 1]], color: '#0000ff' },
+            L: { shape: [[0, 0, 1], [1, 1, 1]], color: '#ff8800' }
         };
 
+        const GAME_STATES = {
+            PLAYING: 'PLAYING',
+            LINE_CLEARING: 'LINE_CLEARING',
+            GAME_OVER: 'GAME_OVER',
+            PAUSED: 'PAUSED'
+        };
+
+        // ===========================================
+        // ボード設定と座標系
+        // ===========================================
+        // 
+        // 【座標系の説明】
+        // - ピース座標(y): -2〜19 の範囲で動作
+        //   - y < 0: バッファ領域（画面外・非表示）
+        //   - y >= 0: 表示領域（画面内）
+        //
+        // - ボード配列インデックス(boardY): 0〜21
+        //   - boardY = y + BUFFER_HEIGHT
+        //   - boardY 0〜1: バッファ（非表示）
+        //   - boardY 2〜21: 表示領域
+        //
+        // 【ゲームオーバー条件】
+        // - ブロックアウト: 新ピースがスポーン時に既存ブロックと衝突
+        // - ロックアウト: ピースがバッファ内（boardY < 2）に固定された
+        //
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;        // 表示領域の高さ
+        const BUFFER_HEIGHT = 2;        // 上バッファの高さ（本家テトリス仕様）
+        const TOTAL_HEIGHT = BOARD_HEIGHT + BUFFER_HEIGHT;  // ボード配列の総高さ（22）
+        const LINE_CLEAR_FRAMES = 12;
+        const SPRINT_DURATION_MS = 60000;
+
+        // ===========================================
+        // Tetrominoクラス
+        // ===========================================
         class Tetromino {
             constructor(type) {
                 this.type = type;
                 this.shape = JSON.parse(JSON.stringify(TETROMINO_TYPES[type].shape));
                 this.color = TETROMINO_TYPES[type].color;
-                this.position = { x: 3, y: 0 };
+                // スポーン位置: y=-1（バッファ内）から開始
+                // ピースの下部が画面上端(y=0)付近に現れる
+                this.position = { x: 3, y: -1 };
             }
 
             rotate() {
-                const newShape = [];
                 const rows = this.shape.length;
                 const cols = this.shape[0].length;
+                const newShape = [];
 
                 for (let j = 0; j < cols; j++) {
                     const newRow = [];
@@ -1095,128 +1114,167 @@
             }
         }
 
+        // ===========================================
+        // TetrisGameクラス
+        // ===========================================
         class TetrisGame {
             constructor(mode = 'normal') {
-                this.mode = mode; // 'normal', 'sprint1m', 'time10', 'time20', 'time50', 'time100'
-                this.BOARD_WIDTH = 10;
-                this.BOARD_HEIGHT = 20;
+                this.mode = mode;
+                this.blockSize = this.calculateBlockSize();
                 
-                // ゲーム状態（ステートマシン）
-                this.gameState = 'PLAYING'; // 'PLAYING', 'LINE_CLEARING', 'SPAWNING', 'GAME_OVER', 'PAUSED'
-                
-                // スマホ対応: 画面サイズに応じてブロックサイズを調整
-                this.BLOCK_SIZE = this.calculateBlockSize();
-
+                // キャンバス初期化
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
-                this.canvas.width = this.BOARD_WIDTH * this.BLOCK_SIZE;
-                this.canvas.height = this.BOARD_HEIGHT * this.BLOCK_SIZE;
+                this.canvas.width = BOARD_WIDTH * this.blockSize;
+                this.canvas.height = BOARD_HEIGHT * this.blockSize;
 
                 this.nextCanvas = document.getElementById('nextCanvas');
                 this.nextCtx = this.nextCanvas.getContext('2d');
 
-                this.board = [];
-                this.currentPiece = null;
-                this.nextPieceType = null;
-                this.score = 0;
-                this.level = 1;
-                this.totalLinesCleared = 0;
-                this.linesRemoved = 0;
-                this.isGameOver = false;
-                this.isPaused = false;
-                this.lastAction = '';
-                this.lastMoveWasRotation = false;
-
-                // タイム機能
-                this.startTime = null;
-                this.elapsedTime = 0;
-                this.timerInterval = null;
-                this.timerStarted = false;  // タイマー開始フラグ
-                this.targetLines = this.getTargetLines();
-
-                this.pieceBag = [];
-                this.gameTimer = null;
+                // ゲーム状態初期化
+                this.initializeGameState();
                 
-                // ライン消去エフェクト用
-                this.flashingLines = [];
-                this.flashCounter = 0;
-                this.lineClearData = null;  // ライン消去データ
-                
-                // requestAnimationFrameベースのゲームループ用
-                this.lastUpdateTime = 0;
-                this.dropTimer = 0;
-                this.animationFrameId = null;
-
+                // ゲーム開始
                 this.init();
                 this.updateModeInfo();
             }
 
+            initializeGameState() {
+                this.board = [];
+                this.currentPiece = null;
+                this.nextPieceType = null;
+                this.pieceBag = [];
+                
+                this.score = 0;
+                this.level = 1;
+                this.linesCleared = 0;
+                
+                this.gameState = GAME_STATES.PLAYING;
+                this.isGameOver = false;
+                this.isPaused = false;
+                
+                this.lastMoveWasRotation = false;
+                this.lastAction = '';
+                
+                // タイマー関連
+                this.startTime = null;
+                this.elapsedTime = 0;
+                this.timerInterval = null;
+                this.timerStarted = false;
+                
+                // ライン消去エフェクト
+                this.lineClearData = null;
+                this.flashingLines = [];
+                this.flashCounter = 0;
+                
+                // ゲームループ
+                this.lastUpdateTime = 0;
+                this.dropTimer = 0;
+                this.animationFrameId = null;
+                
+                // 目標ライン数
+                this.targetLines = this.getTargetLines();
+            }
+
             getTargetLines() {
-                switch(this.mode) {
-                    case 'time10': return 10;
-                    case 'time20': return 20;
-                    case 'time50': return 50;
-                    case 'time100': return 100;
-                    case 'sprint1m': return Infinity; // 1分間で何ライン消せるか
-                    default: return null;
+                const targets = {
+                    'time10': 10,
+                    'time20': 20,
+                    'time50': 50,
+                    'time100': 100,
+                    'sprint1m': Infinity
+                };
+                return targets[this.mode] || null;
+            }
+
+            calculateBlockSize() {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    const availableWidth = window.innerWidth - 120;
+                    const blockSize = Math.floor(availableWidth / BOARD_WIDTH);
+                    return Math.min(Math.max(blockSize, 20), 30);
                 }
+                return 25;
             }
 
             updateModeInfo() {
                 const modeInfo = document.getElementById('modeInfo');
                 const restartButton = document.getElementById('restartButton');
                 
-                switch(this.mode) {
-                    case 'normal':
-                        modeInfo.textContent = '📊 ノーマルモード';
-                        restartButton.style.display = 'none';
-                        break;
-                    case 'sprint1m':
-                        modeInfo.textContent = '⚡ 1分間スプリント';
-                        restartButton.style.display = 'block';
-                        break;
-                    case 'time10':
-                        modeInfo.textContent = '⏱️ 10ライン タイムアタック';
-                        restartButton.style.display = 'block';
-                        break;
-                    case 'time20':
-                        modeInfo.textContent = '⏱️ 20ライン タイムアタック';
-                        restartButton.style.display = 'block';
-                        break;
-                    case 'time50':
-                        modeInfo.textContent = '⏱️ 50ライン タイムアタック';
-                        restartButton.style.display = 'block';
-                        break;
-                    case 'time100':
-                        modeInfo.textContent = '⏱️ 100ライン タイムアタック';
-                        restartButton.style.display = 'block';
-                        break;
+                const modeTexts = {
+                    'normal': '📊 ノーマルモード',
+                    'sprint1m': '⚡ 1分間スプリント',
+                    'time10': '⏱️ 10ライン タイムアタック',
+                    'time20': '⏱️ 20ライン タイムアタック',
+                    'time50': '⏱️ 50ライン タイムアタック',
+                    'time100': '⏱️ 100ライン タイムアタック'
+                };
+                
+                modeInfo.textContent = modeTexts[this.mode] || '';
+                restartButton.style.display = this.mode === 'normal' ? 'none' : 'block';
+            }
+
+            // ===========================================
+            // 初期化
+            // ===========================================
+            init() {
+                // ボード配列: 22行（上2行バッファ + 表示20行）
+                this.board = Array(TOTAL_HEIGHT).fill(null).map(() => 
+                    Array(BOARD_WIDTH).fill(null)
+                );
+
+                this.fillPieceBag();
+                this.nextPieceType = this.getNextPieceFromBag();
+                this.spawnNewPiece();
+                this.drawNext();
+                
+                this.lastUpdateTime = performance.now();
+                this.startGameLoop();
+            }
+
+            fillPieceBag() {
+                const types = Object.keys(TETROMINO_TYPES);
+                this.pieceBag = [...types];
+                // Fisher-Yatesシャッフル
+                for (let i = this.pieceBag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.pieceBag[i], this.pieceBag[j]] = [this.pieceBag[j], this.pieceBag[i]];
                 }
             }
 
+            getNextPieceFromBag() {
+                if (this.pieceBag.length === 0) {
+                    this.fillPieceBag();
+                }
+                return this.pieceBag.shift();
+            }
+
+            // ===========================================
+            // タイマー管理
+            // ===========================================
             startTimer() {
-                // 既にタイマーが動いている場合は何もしない
-                if (this.timerInterval) {
+                if (this.timerInterval !== null) {
                     return;
                 }
                 
-                // 状態チェック
-                if (this.gameState !== 'PLAYING') {
-                    return;
-                }
-                
-                // タイマー開始
                 this.startTime = Date.now();
+                this.timerStarted = true;
+                
                 this.timerInterval = setInterval(() => {
                     if (!this.isPaused && !this.isGameOver) {
                         this.elapsedTime = Date.now() - this.startTime;
                         this.updateTimeDisplay();
+                        
+                        // 1分間スプリント: 時間切れチェック
+                        if (this.mode === 'sprint1m' && this.elapsedTime >= SPRINT_DURATION_MS) {
+                            this.endSprintMode();
+                        }
                     }
                 }, 10);
             }
             
             stopTimer() {
-                if (this.timerInterval) {
+                if (this.timerInterval !== null) {
                     clearInterval(this.timerInterval);
                     this.timerInterval = null;
                 }
@@ -1224,7 +1282,6 @@
 
             updateTimeDisplay() {
                 const timeDisplay = document.getElementById('timeDisplay');
-                
                 const totalSeconds = this.elapsedTime / 1000;
                 const minutes = Math.floor(totalSeconds / 60);
                 const seconds = Math.floor(totalSeconds % 60);
@@ -1237,18 +1294,393 @@
                 }
             }
 
-            checkTimeAttackComplete() {
-                // タイムアタックモード: 目標ライン達成で終了
-                if (this.targetLines && this.linesRemoved >= this.targetLines) {
-                    this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
+            // ===========================================
+            // ゲームループ
+            // ===========================================
+            startGameLoop() {
+                const gameLoop = (currentTime) => {
+                    if (this.isGameOver) {
+                        return;
                     }
-                    this.stopTimer();
-                    this.saveRecord();
-                    this.showTimeAttackComplete();
+
+                    const deltaTime = currentTime - this.lastUpdateTime;
+                    this.lastUpdateTime = currentTime;
+
+                    if (!this.isPaused) {
+                        this.update(deltaTime);
+                    }
+
+                    this.draw();
+                    this.animationFrameId = requestAnimationFrame(gameLoop);
+                };
+
+                this.animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            update(deltaTime) {
+                // ゲーム開始時にタイマースタート
+                if (!this.timerStarted && this.currentPiece !== null) {
+                    this.startTimer();
                 }
+                
+                // ライン消去中の処理
+                if (this.gameState === GAME_STATES.LINE_CLEARING) {
+                    if (this.lineClearData !== null) {
+                        this.lineClearData.frameCount++;
+                        if (this.lineClearData.frameCount >= LINE_CLEAR_FRAMES) {
+                            this.completeClearLines();
+                        }
+                    }
+                    return;
+                }
+                
+                // 通常プレイ中の落下処理
+                if (this.gameState === GAME_STATES.PLAYING && this.currentPiece !== null) {
+                    const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
+                    this.dropTimer += deltaTime;
+                    
+                    if (this.dropTimer >= dropInterval) {
+                        this.dropTimer = 0;
+                        this.moveDown(false);
+                    }
+                }
+            }
+
+            // ===========================================
+            // ピース操作
+            // ===========================================
+            spawnNewPiece() {
+                if (this.isGameOver) {
+                    return;
+                }
+
+                const newPiece = new Tetromino(this.nextPieceType);
+                this.nextPieceType = this.getNextPieceFromBag();
+                this.drawNext();
+
+                if (this.checkCollision(newPiece, 0, 0)) {
+                    this.triggerGameOver();
+                } else {
+                    this.currentPiece = newPiece;
+                    this.gameState = GAME_STATES.PLAYING;
+                }
+            }
+
+            checkCollision(piece, offsetX, offsetY) {
+                if (!piece || !piece.shape) {
+                    return true;
+                }
+                
+                for (let i = 0; i < piece.shape.length; i++) {
+                    for (let j = 0; j < piece.shape[i].length; j++) {
+                        if (piece.shape[i][j] === 1) {
+                            const x = piece.position.x + j + offsetX;
+                            const y = piece.position.y + i + offsetY;
+                            const boardY = y + BUFFER_HEIGHT;
+
+                            // 左右の壁・底との衝突
+                            if (x < 0 || x >= BOARD_WIDTH || boardY >= TOTAL_HEIGHT) {
+                                return true;
+                            }
+
+                            // バッファより上は衝突なし（スポーン時のみ発生）
+                            if (boardY < 0) {
+                                continue;
+                            }
+
+                            // 既存ブロックとの衝突
+                            if (this.board[boardY] && this.board[boardY][x] !== null) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            moveDown(manual = false) {
+                if (!this.currentPiece || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                if (!this.checkCollision(this.currentPiece, 0, 1)) {
+                    this.currentPiece.position.y++;
+                    if (manual) {
+                        this.lastMoveWasRotation = false;
+                    }
+                } else {
+                    this.lockPiece();
+                }
+            }
+
+            moveLeft() {
+                if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                if (!this.checkCollision(this.currentPiece, -1, 0)) {
+                    this.currentPiece.position.x--;
+                    this.lastMoveWasRotation = false;
+                }
+            }
+
+            moveRight() {
+                if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                if (!this.checkCollision(this.currentPiece, 1, 0)) {
+                    this.currentPiece.position.x++;
+                    this.lastMoveWasRotation = false;
+                }
+            }
+
+            rotate() {
+                if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                const rotated = this.currentPiece.rotate();
+                
+                if (!this.checkCollision(rotated, 0, 0)) {
+                    this.currentPiece = rotated;
+                    this.lastMoveWasRotation = true;
+                    return;
+                }
+
+                // Super Rotation System (SRS) - 壁キック
+                const kickTests = [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1]];
+
+                for (const [kickX, kickY] of kickTests) {
+                    const kicked = rotated.clone();
+                    kicked.position.x += kickX;
+                    kicked.position.y += kickY;
+
+                    if (!this.checkCollision(kicked, 0, 0)) {
+                        this.currentPiece = kicked;
+                        this.lastMoveWasRotation = true;
+                        return;
+                    }
+                }
+            }
+
+            hardDrop() {
+                if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                while (!this.checkCollision(this.currentPiece, 0, 1)) {
+                    this.currentPiece.position.y++;
+                }
+                this.lastMoveWasRotation = false;
+                this.lockPiece();
+            }
+
+            // ===========================================
+            // ピース固定とライン消去
+            // ===========================================
+            lockPiece() {
+                if (!this.currentPiece) {
+                    return;
+                }
+
+                const isTSpin = this.checkTSpin(this.currentPiece);
+                let lockedInBuffer = false;
+
+                // ボードにピースを固定
+                for (let i = 0; i < this.currentPiece.shape.length; i++) {
+                    for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
+                        if (this.currentPiece.shape[i][j] === 1) {
+                            const x = this.currentPiece.position.x + j;
+                            const y = this.currentPiece.position.y + i;
+                            const boardY = y + BUFFER_HEIGHT;
+                            
+                            if (boardY >= 0 && boardY < TOTAL_HEIGHT && x >= 0 && x < BOARD_WIDTH) {
+                                this.board[boardY][x] = this.currentPiece.color;
+                                
+                                // バッファ内に固定されたか判定（ロックアウト条件）
+                                if (boardY < BUFFER_HEIGHT) {
+                                    lockedInBuffer = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                this.currentPiece = null;
+                this.lastMoveWasRotation = false;
+
+                // ロックアウト: バッファ内にブロックが残った場合はゲームオーバー
+                if (lockedInBuffer) {
+                    this.triggerGameOver();
+                    return;
+                }
+
+                this.processLineClear(isTSpin);
+            }
+
+            checkTSpin(piece) {
+                if (piece.type !== 'T' || !this.lastMoveWasRotation) {
+                    return false;
+                }
+
+                const x = piece.position.x;
+                const y = piece.position.y;
+                const corners = [[x, y], [x + 2, y], [x, y + 2], [x + 2, y + 2]];
+                let filledCorners = 0;
+
+                for (const [cx, cy] of corners) {
+                    const boardY = cy + BUFFER_HEIGHT;
+                    
+                    // 壁・範囲外・既存ブロックはfilledとしてカウント
+                    if (cx < 0 || cx >= BOARD_WIDTH || boardY < 0 || boardY >= TOTAL_HEIGHT) {
+                        filledCorners++;
+                    } else if (this.board[boardY] && this.board[boardY][cx] !== null) {
+                        filledCorners++;
+                    }
+                }
+
+                return filledCorners >= 3;
+            }
+
+            processLineClear(isTSpin) {
+                const linesToClear = [];
+
+                // 表示領域のみラインクリア判定（バッファは対象外）
+                for (let boardY = BUFFER_HEIGHT; boardY < TOTAL_HEIGHT; boardY++) {
+                    if (this.board[boardY].every(cell => cell !== null)) {
+                        linesToClear.push(boardY);
+                    }
+                }
+
+                if (linesToClear.length > 0) {
+                    this.gameState = GAME_STATES.LINE_CLEARING;
+                    this.lineClearData = {
+                        lines: linesToClear,
+                        isTSpin: isTSpin,
+                        count: linesToClear.length,
+                        frameCount: 0
+                    };
+                    this.flashingLines = linesToClear;
+                    this.flashCounter = 0;
+                } else {
+                    this.spawnNewPiece();
+                }
+            }
+            
+            completeClearLines() {
+                const data = this.lineClearData;
+                if (!data) {
+                    this.gameState = GAME_STATES.PLAYING;
+                    this.spawnNewPiece();
+                    return;
+                }
+
+                // 消去対象以外のラインを保持
+                const newBoard = [];
+                for (let boardY = 0; boardY < TOTAL_HEIGHT; boardY++) {
+                    if (!data.lines.includes(boardY)) {
+                        newBoard.push(this.board[boardY]);
+                    }
+                }
+
+                // 上部に空のラインを追加
+                while (newBoard.length < TOTAL_HEIGHT) {
+                    newBoard.unshift(Array(BOARD_WIDTH).fill(null));
+                }
+
+                this.board = newBoard;
+
+                // スコア計算
+                const scoreTable = { 1: 25, 2: 100, 3: 400, 4: 1600 };
+                const lineScore = scoreTable[data.count] || 25;
+                this.score += lineScore * (this.level + 1);
+                
+                // Tスピンボーナス
+                if (data.isTSpin && data.count > 0) {
+                    const bonus = data.count * 400 * this.level;
+                    this.score += bonus;
+                    const spinTypes = { 1: 'SINGLE', 2: 'DOUBLE', 3: 'TRIPLE' };
+                    this.showAction(`T-SPIN ${spinTypes[data.count] || ''}! +${bonus}`);
+                } else if (data.count === 4) {
+                    const bonus = 800 * this.level;
+                    this.score += bonus;
+                    this.showAction(`TETRIS! +${bonus}`);
+                }
+
+                this.linesCleared += data.count;
+
+                // レベルアップ
+                const newLevel = Math.floor(this.linesCleared / 10) + 1;
+                if (newLevel > this.level) {
+                    this.level = newLevel;
+                }
+
+                this.updateDisplay();
+
+                // タイムアタック完了チェック
+                if (this.targetLines !== null && this.targetLines !== Infinity && this.linesCleared >= this.targetLines) {
+                    this.completeTimeAttack();
+                    return;
+                }
+
+                // 状態リセットして次のピースを生成
+                this.flashingLines = [];
+                this.flashCounter = 0;
+                this.lineClearData = null;
+                this.gameState = GAME_STATES.PLAYING;
+                this.spawnNewPiece();
+            }
+
+            // ===========================================
+            // ゲーム終了処理
+            // ===========================================
+            triggerGameOver() {
+                this.isGameOver = true;
+                this.gameState = GAME_STATES.GAME_OVER;
+                
+                if (this.animationFrameId !== null) {
+                    cancelAnimationFrame(this.animationFrameId);
+                    this.animationFrameId = null;
+                }
+                this.stopTimer();
+                
+                if (this.mode === 'normal') {
+                    this.saveRecord();
+                }
+                this.showGameOver();
+            }
+
+            endSprintMode() {
+                if (this.isGameOver) {
+                    return;
+                }
+                
+                this.isGameOver = true;
+                this.gameState = GAME_STATES.GAME_OVER;
+                
+                if (this.animationFrameId !== null) {
+                    cancelAnimationFrame(this.animationFrameId);
+                    this.animationFrameId = null;
+                }
+                this.stopTimer();
+                
+                this.saveRecord();
+                this.showSprintComplete();
+            }
+
+            completeTimeAttack() {
+                this.isGameOver = true;
+                this.gameState = GAME_STATES.GAME_OVER;
+                
+                if (this.animationFrameId !== null) {
+                    cancelAnimationFrame(this.animationFrameId);
+                    this.animationFrameId = null;
+                }
+                this.stopTimer();
+                
+                this.saveRecord();
+                this.showTimeAttackComplete();
             }
 
             saveRecord() {
@@ -1259,16 +1691,15 @@
 
                 const record = {
                     mode: this.mode,
-                    time: this.elapsedTime,
-                    score: this.score,
                     date: new Date().toISOString()
                 };
 
                 if (this.mode === 'normal') {
                     record.score = this.score;
-                    delete record.time;
                 } else if (this.mode === 'sprint1m') {
-                    record.lines = this.linesRemoved;  // 消したライン数を記録
+                    record.lines = this.linesCleared;
+                } else {
+                    record.time = this.elapsedTime;
                 }
 
                 records[this.mode].push(record);
@@ -1276,39 +1707,41 @@
                     if (this.mode === 'normal') {
                         return b.score - a.score;
                     } else if (this.mode === 'sprint1m') {
-                        return b.lines - a.lines;  // ライン数が多い順
+                        return b.lines - a.lines;
                     }
                     return a.time - b.time;
                 });
-                records[this.mode] = records[this.mode].slice(0, 10); // Top 10
+                records[this.mode] = records[this.mode].slice(0, 10);
 
                 localStorage.setItem('tetrisRecords', JSON.stringify(records));
             }
 
-            showTimeAttackComplete() {
-                if (this.mode === 'sprint1m') {
-                    // 1分間スプリントモード: ライン数を表示
-                    document.getElementById('finalScore').textContent = `${this.linesRemoved} ライン`;
-                    document.getElementById('gameOverOverlay').classList.remove('hidden');
-                    
-                    const title = document.querySelector('.game-over-title');
-                    title.textContent = '時間切れ!';
-                    title.style.color = '#00ff00';
-                } else {
-                    // タイムアタックモード: タイムを表示
-                    const totalSeconds = this.elapsedTime / 1000;
-                    const minutes = Math.floor(totalSeconds / 60);
-                    const seconds = Math.floor(totalSeconds % 60);
-                    const milliseconds = Math.floor((totalSeconds % 1) * 1000);
-                    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+            showGameOver() {
+                const title = document.querySelector('.game-over-title');
+                title.textContent = 'GAME OVER';
+                title.style.color = '#ff0000';
+                
+                document.getElementById('finalScore').textContent = this.score.toLocaleString() + ' 点';
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
+            }
 
-                    document.getElementById('finalScore').textContent = `${timeStr}`;
-                    document.getElementById('gameOverOverlay').classList.remove('hidden');
-                    
-                    const title = document.querySelector('.game-over-title');
-                    title.textContent = 'COMPLETE!';
-                    title.style.color = '#00ff00';
-                }
+            showSprintComplete() {
+                const title = document.querySelector('.game-over-title');
+                title.textContent = '時間切れ!';
+                title.style.color = '#00ff00';
+                
+                document.getElementById('finalScore').textContent = `${this.linesCleared} ライン`;
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
+            }
+
+            showTimeAttackComplete() {
+                const title = document.querySelector('.game-over-title');
+                title.textContent = 'COMPLETE!';
+                title.style.color = '#00ff00';
+                
+                const timeStr = this.formatTime(this.elapsedTime);
+                document.getElementById('finalScore').textContent = timeStr;
+                document.getElementById('gameOverOverlay').classList.remove('hidden');
             }
 
             formatTime(milliseconds) {
@@ -1319,477 +1752,48 @@
                 return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
             }
 
-            calculateBlockSize() {
-                const isMobile = window.innerWidth <= 768;
-                if (isMobile) {
-                    // スマホではサイドパネル分を考慮してプレイ画面を最大化
-                    const availableWidth = window.innerWidth - 120; // サイドパネル + マージン
-                    const blockSize = Math.floor(availableWidth / this.BOARD_WIDTH);
-                    return Math.min(Math.max(blockSize, 20), 30); // 20-30pxの範囲
-                }
-                return 25;
-            }
-
-            init() {
-                this.board = Array(this.BOARD_HEIGHT).fill(null).map(() => 
-                    Array(this.BOARD_WIDTH).fill(null)
-                );
-
-                this.fillPieceBag();
-                this.nextPieceType = this.getNextPiece();
-                this.spawnNewPiece();
-                this.drawNext();
-                
-                // requestAnimationFrameベースのゲームループを開始
-                this.lastUpdateTime = performance.now();
-                this.startGameLoop();
-            }
-
-            fillPieceBag() {
-                const types = Object.keys(TETROMINO_TYPES);
-                // Fisher-Yates シャッフルで完全ランダム化
-                this.pieceBag = [...types];
-                for (let i = this.pieceBag.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [this.pieceBag[i], this.pieceBag[j]] = [this.pieceBag[j], this.pieceBag[i]];
-                }
-            }
-
-            getNextPiece() {
-                if (this.pieceBag.length === 0) {
-                    this.fillPieceBag();
-                }
-                return this.pieceBag.shift();
-            }
-
-            startGameLoop() {
-                const gameLoop = (currentTime) => {
-                    if (this.isGameOver) {
-                        return;
-                    }
-
-                    const deltaTime = currentTime - this.lastUpdateTime;
-                    this.lastUpdateTime = currentTime;
-
-                    // ゲーム更新
-                    if (!this.isPaused && this.gameState === 'PLAYING') {
-                        this.update(deltaTime);
-                    }
-
-                    // 描画
-                    this.draw();
-
-                    // 次のフレーム
-                    this.animationFrameId = requestAnimationFrame(gameLoop);
-                };
-
-                this.animationFrameId = requestAnimationFrame(gameLoop);
-            }
-
-            update(deltaTime) {
-                // 1分間スプリントモード: 最優先でタイマーチェック（どの状態でも実行）
-                if (this.mode === 'sprint1m' && this.timerStarted && this.elapsedTime >= 60000 && !this.isGameOver) {
-                    this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
-                    }
-                    this.stopTimer();
-                    this.saveRecord();
-                    this.showTimeAttackComplete();
-                    return;
-                }
-                
-                // タイマーを状態依存で開始（入力から完全に切り離す）
-                if (!this.timerStarted && this.gameState === 'PLAYING' && this.currentPiece) {
-                    this.startTimer();
-                    this.timerStarted = true;
-                }
-                
-                // LINE_CLEARING状態の処理（フレームベース）
-                if (this.gameState === 'LINE_CLEARING') {
-                    if (this.lineClearData) {
-                        this.lineClearData.frameCount++;
-                        // 12フレーム（約200ms）待ってからライン消去完了
-                        if (this.lineClearData.frameCount >= 12) {
-                            this.completeClearLines();
-                        }
-                    }
-                    return; // LINE_CLEARING中は落下処理しない
-                }
-                
-                // PLAYING状態の処理
-                if (this.gameState === 'PLAYING') {
-                    // 落下速度の計算（レベルに応じて変化）
-                    const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
-                    
-                    this.dropTimer += deltaTime;
-                    
-                    if (this.dropTimer >= dropInterval) {
-                        this.dropTimer = 0;
-                        this.moveDown();
-                    }
-                }
-            }
-
-            startGameTimer() {
-                // この関数は互換性のために残すが、何もしない
-                // 実際のゲームループはrequestAnimationFrameで管理
-            }
-
-            tick() {
-                // この関数は互換性のために残すが、何もしない
-            }
-
-            spawnNewPiece() {
-                if (this.isGameOver || this.gameState === 'SPAWNING') return;
-
-                // 状態をSPAWNINGに変更（多重実行防止）
-                this.gameState = 'SPAWNING';
-
-                const newPiece = new Tetromino(this.nextPieceType);
-                this.nextPieceType = this.getNextPiece();
-                this.drawNext();
-
-                if (this.checkCollision(newPiece, 0, 0)) {
-                    this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
-                    }
-                    clearInterval(this.timerInterval);
-                    if (this.mode === 'normal') {
-                        this.saveRecord();
-                    }
-                    this.showGameOver();
-                } else {
-                    this.currentPiece = newPiece;
-                    // 状態をPLAYINGに戻す
-                    this.gameState = 'PLAYING';
-                }
-            }
-
-            checkCollision(piece, offsetX, offsetY) {
-                for (let i = 0; i < piece.shape.length; i++) {
-                    for (let j = 0; j < piece.shape[i].length; j++) {
-                        if (piece.shape[i][j] === 1) {
-                            const x = piece.position.x + j + offsetX;
-                            const y = piece.position.y + i + offsetY;
-
-                            // 左右と下の境界チェック
-                            if (x < 0 || x >= this.BOARD_WIDTH || y >= this.BOARD_HEIGHT) {
-                                return true;
-                            }
-
-                            // 上端（y < 0）はスポーン時のため衝突判定しない
-                            if (y >= 0 && y < this.BOARD_HEIGHT && x >= 0 && x < this.BOARD_WIDTH) {
-                                // boardが初期化されているか確認
-                                if (this.board && this.board[y] && this.board[y][x] !== null) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-                return false;
-            }
-
-            moveDown(manual = false) {
-                if (!this.currentPiece || this.isGameOver) return;
-
-                if (!this.checkCollision(this.currentPiece, 0, 1)) {
-                    this.currentPiece.position.y++;
-                    // 手動での下移動のみlastMoveWasRotationをリセット
-                    if (manual) {
-                        this.lastMoveWasRotation = false;
-                    }
-                } else {
-                    this.lockPiece();
-                }
-                this.draw();
-            }
-
-            moveLeft() {
-                if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                if (!this.checkCollision(this.currentPiece, -1, 0)) {
-                    this.currentPiece.position.x--;
-                    this.lastMoveWasRotation = false;
-                    this.draw();
-                }
-            }
-
-            moveRight() {
-                if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                if (!this.checkCollision(this.currentPiece, 1, 0)) {
-                    this.currentPiece.position.x++;
-                    this.lastMoveWasRotation = false;
-                    this.draw();
-                }
-            }
-
-            rotate() {
-                if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                const rotated = this.currentPiece.rotate();
-                
-                if (!this.checkCollision(rotated, 0, 0)) {
-                    this.currentPiece = rotated;
-                    this.lastMoveWasRotation = true;
-                    this.draw();
-                    return;
-                }
-
-                // Super Rotation System (SRS) - 壁キック
-                const kickTests = [
-                    [-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1]
-                ];
-
-                for (const [kickX, kickY] of kickTests) {
-                    const kicked = rotated.clone();
-                    kicked.position.x += kickX;
-                    kicked.position.y += kickY;
-
-                    if (!this.checkCollision(kicked, 0, 0)) {
-                        this.currentPiece = kicked;
-                        this.lastMoveWasRotation = true;
-                        this.draw();
-                        return;
-                    }
-                }
-            }
-
-            hardDrop() {
-                if (!this.currentPiece || this.isPaused || this.isGameOver) return;
-
-                while (!this.checkCollision(this.currentPiece, 0, 1)) {
-                    this.currentPiece.position.y++;
-                }
-                this.lastMoveWasRotation = false;
-                this.lockPiece();
-                this.draw();
-            }
-
-            lockPiece() {
-                if (!this.currentPiece) return;
-
-                const isTSpin = this.checkTSpin(this.currentPiece);
-
-                // ボードにピースを固定
-                for (let i = 0; i < this.currentPiece.shape.length; i++) {
-                    for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
-                        if (this.currentPiece.shape[i][j] === 1) {
-                            const x = this.currentPiece.position.x + j;
-                            const y = this.currentPiece.position.y + i;
-                            if (y >= 0 && y < this.BOARD_HEIGHT && x >= 0 && x < this.BOARD_WIDTH) {
-                                this.board[y][x] = this.currentPiece.color;
-                            }
-                        }
-                    }
-                }
-
-                // 現在のピースをnullにして、ライン消去中の操作を防ぐ
-                this.currentPiece = null;
-                this.lastMoveWasRotation = false;
-
-                // ライン消去処理（非同期）
-                this.clearLines(isTSpin);
-            }
-
-            checkTSpin(piece) {
-                if (piece.type !== 'T' || !this.lastMoveWasRotation) {
-                    return false;
-                }
-
-                const x = piece.position.x;
-                const y = piece.position.y;
-
-                // T字ブロックの4つの角の座標（3x3グリッド基準）
-                const corners = [
-                    [x, y],
-                    [x + 2, y],
-                    [x, y + 2],
-                    [x + 2, y + 2]
-                ];
-
-                let filledCorners = 0;
-                for (const [cx, cy] of corners) {
-                    if (cx < 0 || cx >= this.BOARD_WIDTH || cy < 0 || cy >= this.BOARD_HEIGHT) {
-                        filledCorners++;
-                    } else if (cy >= 0 && cy < this.BOARD_HEIGHT && cx >= 0 && cx < this.BOARD_WIDTH && this.board[cy][cx] !== null) {
-                        filledCorners++;
-                    }
-                }
-
-                return filledCorners >= 3;
-            }
-
-            clearLines(isTSpin = false) {
-                if (this.gameState === 'LINE_CLEARING') return;
-
-                let linesCleared = 0;
-                const linesToClear = [];
-
-                // クリアするラインを特定
-                for (let y = 0; y < this.board.length; y++) {
-                    if (this.board[y].every(cell => cell !== null)) {
-                        linesToClear.push(y);
-                        linesCleared++;
-                    }
-                }
-
-                if (linesCleared > 0) {
-                    // 状態をLINE_CLEARINGに変更（この間は他の処理をブロック）
-                    this.gameState = 'LINE_CLEARING';
-                    this.lineClearData = {
-                        lines: linesToClear,
-                        isTSpin: isTSpin,
-                        linesCleared: linesCleared,
-                        frameCount: 0
-                    };
-                    
-                    // エフェクト: ラインを白く光らせる
-                    this.flashLines(linesToClear);
-                } else {
-                    // ライン消去がない場合はすぐに新しいピースを生成
-                    this.spawnNewPiece();
-                }
-            }
-            
-            // ライン消去処理の完了（フレームベース）
-            completeClearLines() {
-                const data = this.lineClearData;
-                
-                const newBoard = [];
-                for (let y = 0; y < this.board.length; y++) {
-                    if (!data.lines.includes(y)) {
-                        newBoard.push(this.board[y]);
-                    }
-                }
-
-                while (newBoard.length < this.BOARD_HEIGHT) {
-                    newBoard.unshift(Array(this.BOARD_WIDTH).fill(null));
-                }
-
-                this.board = newBoard;
-
-                // スコア計算
-                let lineScore = 25;
-                if (data.linesCleared === 2) lineScore = 100;
-                else if (data.linesCleared === 3) lineScore = 400;
-                else if (data.linesCleared === 4) lineScore = 1600;
-
-                this.score += lineScore * (this.level + 1);
-                
-                // Tスピンボーナス
-                if (data.isTSpin && data.linesCleared > 0) {
-                    const bonus = data.linesCleared * 400 * this.level;
-                    this.score += bonus;
-                    const spinType = data.linesCleared === 1 ? 'SINGLE' : data.linesCleared === 2 ? 'DOUBLE' : 'TRIPLE';
-                    this.showAction(`T-SPIN ${spinType}! +${bonus}`);
-                } else if (data.linesCleared === 4) {
-                    // テトリス（4ライン同時消し）ボーナス
-                    const bonus = 800 * this.level;
-                    this.score += bonus;
-                    this.showAction(`TETRIS! +${bonus}`);
-                }
-
-                this.linesRemoved += data.linesCleared;
-
-                // レベルアップロジック
-                const newLevel = Math.floor(this.linesRemoved / 10) + 1;
-                if (newLevel > this.level) {
-                    this.level = newLevel;
-                }
-
-                // 表示を更新
-                this.updateDisplay();
-
-                // タイムアタック完了チェック
-                this.checkTimeAttackComplete();
-                
-                // 状態をPLAYINGに戻す
-                this.gameState = 'PLAYING';
-                this.flashingLines = [];
-                this.flashCounter = 0;
-                this.lineClearData = null;
-                
-                // ライン消去完了後に新しいピースを生成
-                this.spawnNewPiece();
-            }
-
-            flashLines(lines) {
-                // エフェクト状態を保存（描画はdraw内で行う）
-                this.flashingLines = lines;
-                this.flashCounter = 0;
-            }
-
-            showAction(text) {
-                this.lastAction = text;
-                const display = document.getElementById('actionDisplay');
-                display.innerHTML = `<div class="action-text">${text}</div>`;
-
-                setTimeout(() => {
-                    display.innerHTML = '';
-                }, 3000);
-            }
-
-            updateDisplay() {
-                document.getElementById('scoreDisplay').textContent = this.score.toLocaleString();
-                document.getElementById('levelDisplay').textContent = this.level;
-                document.getElementById('linesDisplay').textContent = this.linesRemoved;
-            }
-
-            getGhostPosition() {
-                if (!this.currentPiece) return null;
-
-                const ghost = this.currentPiece.clone();
-                while (!this.checkCollision(ghost, 0, 1)) {
-                    ghost.position.y++;
-                }
-                return ghost;
-            }
-
+            // ===========================================
+            // 描画
+            // ===========================================
             draw() {
-                // ボードをクリア
                 this.ctx.fillStyle = '#1e293b';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-                // ボード上の固定されたブロックを描画
-                for (let y = 0; y < this.BOARD_HEIGHT; y++) {
-                    for (let x = 0; x < this.BOARD_WIDTH; x++) {
-                        if (this.board[y][x]) {
-                            // フラッシュ対象のラインは白く光らせる（1回だけ）
-                            if (this.gameState === 'LINE_CLEARING' && 
-                                this.flashingLines.includes(y) && 
-                                this.flashCounter < 6) {  // 最初の6フレームだけ光る
+                // 固定ブロックの描画（表示領域のみ）
+                for (let screenY = 0; screenY < BOARD_HEIGHT; screenY++) {
+                    const boardY = screenY + BUFFER_HEIGHT;
+                    for (let x = 0; x < BOARD_WIDTH; x++) {
+                        if (this.board[boardY] && this.board[boardY][x]) {
+                            // ライン消去エフェクト
+                            if (this.gameState === GAME_STATES.LINE_CLEARING && 
+                                this.flashingLines.includes(boardY) && 
+                                this.flashCounter < 6) {
                                 this.ctx.fillStyle = '#ffffff';
                                 this.ctx.shadowBlur = 15;
                                 this.ctx.shadowColor = '#ffffff';
                                 this.ctx.fillRect(
-                                    x * this.BLOCK_SIZE,
-                                    y * this.BLOCK_SIZE,
-                                    this.BLOCK_SIZE,
-                                    this.BLOCK_SIZE
+                                    x * this.blockSize,
+                                    screenY * this.blockSize,
+                                    this.blockSize,
+                                    this.blockSize
                                 );
                                 this.ctx.shadowBlur = 0;
                             } else {
-                                this.drawBlock(x, y, this.board[y][x]);
+                                this.drawBlock(x, screenY, this.board[boardY][x]);
                             }
                         } else {
-                            this.drawEmptyBlock(x, y);
+                            this.drawEmptyBlock(x, screenY);
                         }
                     }
                 }
                 
-                // フラッシュカウンターを進める
-                if (this.gameState === 'LINE_CLEARING') {
+                if (this.gameState === GAME_STATES.LINE_CLEARING) {
                     this.flashCounter++;
                 }
 
-                // ゴースト（影）を描画
+                // ゴーストとカレントピースの描画
                 if (this.currentPiece) {
+                    // ゴースト（落下位置プレビュー）
                     const ghost = this.getGhostPosition();
                     if (ghost) {
                         for (let i = 0; i < ghost.shape.length; i++) {
@@ -1798,22 +1802,20 @@
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
                                     if (y >= 0) {
-                                        // 半透明の塗りつぶし
                                         this.ctx.fillStyle = this.currentPiece.color + '40';
                                         this.ctx.fillRect(
-                                            x * this.BLOCK_SIZE,
-                                            y * this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE
+                                            x * this.blockSize,
+                                            y * this.blockSize,
+                                            this.blockSize,
+                                            this.blockSize
                                         );
-                                        // より濃い縁取り
                                         this.ctx.strokeStyle = this.currentPiece.color + 'AA';
                                         this.ctx.lineWidth = 2;
                                         this.ctx.strokeRect(
-                                            x * this.BLOCK_SIZE,
-                                            y * this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE,
-                                            this.BLOCK_SIZE
+                                            x * this.blockSize,
+                                            y * this.blockSize,
+                                            this.blockSize,
+                                            this.blockSize
                                         );
                                     }
                                 }
@@ -1821,7 +1823,7 @@
                         }
                     }
 
-                    // 現在のピースを描画（ネオン効果付き）
+                    // カレントピース
                     for (let i = 0; i < this.currentPiece.shape.length; i++) {
                         for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
                             if (this.currentPiece.shape[i][j] === 1) {
@@ -1837,65 +1839,76 @@
             }
 
             drawBlock(x, y, color) {
-                // 控えめなグロー効果
                 this.ctx.shadowBlur = 3;
                 this.ctx.shadowColor = color;
                 
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(
-                    x * this.BLOCK_SIZE,
-                    y * this.BLOCK_SIZE,
-                    this.BLOCK_SIZE,
-                    this.BLOCK_SIZE
+                    x * this.blockSize,
+                    y * this.blockSize,
+                    this.blockSize,
+                    this.blockSize
                 );
                 
-                // 控えめなインナーハイライト
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
                 this.ctx.fillRect(
-                    x * this.BLOCK_SIZE + 2,
-                    y * this.BLOCK_SIZE + 2,
-                    this.BLOCK_SIZE - 4,
-                    this.BLOCK_SIZE - 4
+                    x * this.blockSize + 2,
+                    y * this.blockSize + 2,
+                    this.blockSize - 4,
+                    this.blockSize - 4
                 );
                 
                 this.ctx.shadowBlur = 0;
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 1;
                 this.ctx.strokeRect(
-                    x * this.BLOCK_SIZE,
-                    y * this.BLOCK_SIZE,
-                    this.BLOCK_SIZE,
-                    this.BLOCK_SIZE
+                    x * this.blockSize,
+                    y * this.blockSize,
+                    this.blockSize,
+                    this.blockSize
                 );
             }
 
             drawEmptyBlock(x, y) {
                 this.ctx.fillStyle = 'rgba(71, 85, 105, 0.1)';
                 this.ctx.fillRect(
-                    x * this.BLOCK_SIZE,
-                    y * this.BLOCK_SIZE,
-                    this.BLOCK_SIZE,
-                    this.BLOCK_SIZE
+                    x * this.blockSize,
+                    y * this.blockSize,
+                    this.blockSize,
+                    this.blockSize
                 );
                 this.ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
                 this.ctx.lineWidth = 1;
                 this.ctx.strokeRect(
-                    x * this.BLOCK_SIZE,
-                    y * this.BLOCK_SIZE,
-                    this.BLOCK_SIZE,
-                    this.BLOCK_SIZE
+                    x * this.blockSize,
+                    y * this.blockSize,
+                    this.blockSize,
+                    this.blockSize
                 );
             }
 
+            getGhostPosition() {
+                if (!this.currentPiece) {
+                    return null;
+                }
+
+                const ghost = this.currentPiece.clone();
+                while (!this.checkCollision(ghost, 0, 1)) {
+                    ghost.position.y++;
+                }
+                return ghost;
+            }
+
             drawNext() {
-                // キャンバスをクリア
                 this.nextCtx.fillStyle = '#1e293b';
                 this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
 
-                if (!this.nextPieceType) return;
+                if (!this.nextPieceType) {
+                    return;
+                }
 
                 const nextPiece = new Tetromino(this.nextPieceType);
-                const blockSize = 25;  // 18から25に拡大
+                const blockSize = 25;
                 const shape = nextPiece.shape;
                 
                 const totalWidth = shape[0].length * blockSize;
@@ -1926,8 +1939,29 @@
                 }
             }
 
+            showAction(text) {
+                this.lastAction = text;
+                const display = document.getElementById('actionDisplay');
+                display.innerHTML = `<div class="action-text">${text}</div>`;
+
+                setTimeout(() => {
+                    display.innerHTML = '';
+                }, 3000);
+            }
+
+            updateDisplay() {
+                document.getElementById('scoreDisplay').textContent = this.score.toLocaleString();
+                document.getElementById('levelDisplay').textContent = this.level;
+                document.getElementById('linesDisplay').textContent = this.linesCleared;
+            }
+
+            // ===========================================
+            // ゲーム制御
+            // ===========================================
             togglePause() {
-                if (this.isGameOver) return;
+                if (this.isGameOver) {
+                    return;
+                }
 
                 this.isPaused = !this.isPaused;
                 const pauseOverlay = document.getElementById('pauseOverlay');
@@ -1936,7 +1970,6 @@
                 if (this.isPaused) {
                     pauseOverlay.classList.remove('hidden');
                     pauseButton.textContent = '▶ 再開';
-                    // オーバーレイクリックで再開
                     pauseOverlay.onclick = () => this.togglePause();
                 } else {
                     pauseOverlay.classList.add('hidden');
@@ -1946,115 +1979,54 @@
             }
 
             goHome() {
-                this.stopTimer();
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                }
-                if (this.animationFrameId) {
-                    cancelAnimationFrame(this.animationFrameId);
-                }
+                this.cleanup();
                 
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 document.getElementById('pauseOverlay').classList.add('hidden');
                 document.getElementById('buttonControls').classList.add('hidden');
                 document.getElementById('homeScreen').classList.remove('hidden');
+                
                 loadBestRecords();
                 showRanking('normal');
             }
 
             reset() {
-                // すべてのタイマーとアニメーションを完全に停止
-                this.stopTimer();
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                }
-                if (this.animationFrameId) {
-                    cancelAnimationFrame(this.animationFrameId);
-                }
+                this.cleanup();
+                this.initializeGameState();
                 
-                this.gameTimer = null;
-                this.animationFrameId = null;
-                
-                // すべての状態を完全にリセット
-                this.gameState = 'PLAYING';
-                this.currentPiece = null;
-                this.nextPieceType = null;
-                this.score = 0;
-                this.level = 1;
-                this.totalLinesCleared = 0;
-                this.linesRemoved = 0;
-                this.isGameOver = false;
-                this.isPaused = false;
-                this.lastAction = '';
-                this.lastMoveWasRotation = false;
-                
-                // タイマーを完全にリセット
-                this.startTime = null;
-                this.elapsedTime = 0;
-                this.timerStarted = false;
-                
-                // ゲームループ用変数をリセット
-                this.lastUpdateTime = 0;
-                this.dropTimer = 0;
-                
-                // ピースバッグを完全にクリア
-                this.pieceBag = [];
-                
-                // オーバーレイを隠す
                 document.getElementById('gameOverOverlay').classList.add('hidden');
                 document.getElementById('pauseOverlay').classList.add('hidden');
                 document.getElementById('actionDisplay').innerHTML = '';
                 document.getElementById('timeDisplay').textContent = '';
                 
-                // ボードを完全に再生成
-                this.board = Array(this.BOARD_HEIGHT).fill(null).map(() => 
-                    Array(this.BOARD_WIDTH).fill(null)
-                );
-
-                // 新しいピースバッグを作成
-                this.fillPieceBag();
-                this.nextPieceType = this.getNextPiece();
-                
-                // NEXTを描画
-                this.drawNext();
-                
-                // 表示を更新
+                this.init();
                 this.updateDisplay();
                 this.updateModeInfo();
-                
-                // 新しいゲームループを開始
-                this.lastUpdateTime = performance.now();
-                this.startGameLoop();
-                
-                // 最初のピースを生成
-                this.spawnNewPiece();
-                
-                // ボードを描画
-                this.draw();
             }
 
-            showGameOver() {
-                const title = document.querySelector('.game-over-title');
-                title.textContent = 'GAME OVER';
-                title.style.color = '#ff0000';
+            cleanup() {
+                this.stopTimer();
                 
-                if (this.mode === 'normal') {
-                    document.getElementById('finalScore').textContent = this.score.toLocaleString() + ' 点';
+                if (this.animationFrameId !== null) {
+                    cancelAnimationFrame(this.animationFrameId);
+                    this.animationFrameId = null;
                 }
-                document.getElementById('gameOverOverlay').classList.remove('hidden');
             }
         }
 
-        // ゲーム開始
+        // ===========================================
+        // グローバル変数と関数
+        // ===========================================
         let game = null;
-        let controlMode = 'swipe'; // 'swipe' or 'button'
+        let controlMode = 'swipe';
         
-        // グローバルな入力制御（一度だけ登録）
         function setupGlobalControls() {
             // キーボード操作
             document.addEventListener('keydown', (e) => {
-                if (!game || game.isGameOver) return;
+                if (!game || game.isGameOver) {
+                    return;
+                }
 
                 switch(e.key) {
                     case 'ArrowLeft':
@@ -2097,7 +2069,9 @@
             const canvas = document.getElementById('gameCanvas');
             
             canvas.addEventListener('touchstart', (e) => {
-                if (!game || game.isGameOver || game.isPaused) return;
+                if (!game || game.isGameOver || game.isPaused) {
+                    return;
+                }
                 
                 e.preventDefault();
                 const touch = e.touches[0];
@@ -2107,7 +2081,9 @@
             });
 
             canvas.addEventListener('touchend', (e) => {
-                if (!game || game.isGameOver || game.isPaused) return;
+                if (!game || game.isGameOver || game.isPaused) {
+                    return;
+                }
                 
                 e.preventDefault();
                 const touch = e.changedTouches[0];
@@ -2120,40 +2096,35 @@
                 const absDeltaX = Math.abs(deltaX);
                 const absDeltaY = Math.abs(deltaY);
 
-                // タップ判定（回転）
                 if (absDeltaX < minSwipeDistance && absDeltaY < minSwipeDistance && touchDuration < tapMaxDuration) {
                     game.rotate();
                     return;
                 }
 
-                // スワイプ判定
                 if (absDeltaX > absDeltaY) {
-                    // 横方向のスワイプ
                     if (deltaX < 0) {
                         game.moveLeft();
                     } else {
                         game.moveRight();
                     }
                 } else {
-                    // 縦方向のスワイプ
                     if (deltaY < 0) {
-                        // 上スワイプ - ハードドロップ
                         game.hardDrop();
                     } else {
-                        // 下スワイプ - 高速落下
                         game.moveDown(true);
                     }
                 }
             });
 
-            // タッチ移動中のデフォルト動作を防止
             canvas.addEventListener('touchmove', (e) => {
                 e.preventDefault();
             }, { passive: false });
 
             // UIボタン
             document.getElementById('pauseButton').addEventListener('click', () => {
-                if (game) game.togglePause();
+                if (game) {
+                    game.togglePause();
+                }
             });
 
             document.getElementById('restartButton').addEventListener('click', () => {
@@ -2168,34 +2139,44 @@
                 }
             });
 
-            // ゲームオーバー画面のホームボタン
             document.getElementById('homeButton').addEventListener('click', () => {
-                if (game) game.goHome();
+                if (game) {
+                    game.goHome();
+                }
             });
 
-            // ボタン操作のイベントリスナー
+            // ボタン操作
             document.getElementById('leftBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) game.moveLeft();
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveLeft();
+                }
             });
 
             document.getElementById('rightBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) game.moveRight();
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveRight();
+                }
             });
 
             document.getElementById('centerBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) game.moveDown(true);
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveDown(true);
+                }
             });
 
             document.getElementById('upBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) game.rotate();
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.rotate();
+                }
             });
 
             document.getElementById('downBtn2').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) game.hardDrop();
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.hardDrop();
+                }
             });
         }
         
-        // ページ読み込み時に一度だけ実行
         window.addEventListener('DOMContentLoaded', () => {
             setupGlobalControls();
         });
@@ -2217,17 +2198,8 @@
         }
 
         function startGame(mode) {
-            // 既存のゲームインスタンスがあれば完全に破棄
             if (game) {
-                if (game.animationFrameId) {
-                    cancelAnimationFrame(game.animationFrameId);
-                }
-                if (game.timerInterval) {
-                    clearInterval(game.timerInterval);
-                }
-                if (game.gameTimer) {
-                    clearInterval(game.gameTimer);
-                }
+                game.cleanup();
                 game = null;
             }
             
@@ -2236,7 +2208,6 @@
             document.getElementById('gameOverOverlay').classList.add('hidden');
             document.getElementById('pauseOverlay').classList.add('hidden');
             
-            // ボタン操作の状態を復元
             const isButton = document.getElementById('controlToggle').checked;
             if (isButton) {
                 document.getElementById('buttonControls').classList.remove('hidden');
@@ -2248,17 +2219,14 @@
         function loadBestRecords() {
             const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
             
-            // ノーマルモード
             if (records.normal && records.normal.length > 0) {
                 document.getElementById('normalBest').textContent = `最高: ${records.normal[0].score.toLocaleString()} 点`;
             }
             
-            // 1分間スプリント
             if (records.sprint1m && records.sprint1m.length > 0) {
                 document.getElementById('sprint1mBest').textContent = `最高: ${records.sprint1m[0].lines} ライン`;
             }
             
-            // タイムアタック
             ['time10', 'time20', 'time50', 'time100'].forEach(mode => {
                 if (records[mode] && records[mode].length > 0) {
                     const time = records[mode][0].time;
@@ -2273,7 +2241,6 @@
         }
 
         function showRanking(mode, event) {
-            // タブの切り替え
             if (event && event.target) {
                 document.querySelectorAll('.ranking-tab').forEach(tab => {
                     tab.classList.remove('active');
@@ -2316,14 +2283,12 @@
             }).join('');
         }
 
-        // 星座風背景の生成
         function createStarField() {
             const container = document.getElementById('starsBackground');
             const starCount = 100;
             const lineCount = 15;
             const shootingStarCount = 3;
 
-            // 星を生成
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
@@ -2334,7 +2299,6 @@
                 container.appendChild(star);
             }
 
-            // 星座の線を生成
             const stars = container.querySelectorAll('.star');
             for (let i = 0; i < lineCount; i++) {
                 const star1 = stars[Math.floor(Math.random() * stars.length)];
@@ -2348,7 +2312,6 @@
                     
                     const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
                     
-                    // 近い星同士のみ線で結ぶ
                     if (distance < 20) {
                         const line = document.createElement('div');
                         line.className = 'constellation-line';
@@ -2364,7 +2327,6 @@
                 }
             }
 
-            // 流れ星を生成
             for (let i = 0; i < shootingStarCount; i++) {
                 const shootingStar = document.createElement('div');
                 shootingStar.className = 'shooting-star';
@@ -2389,7 +2351,7 @@
             });
         }
 
-        // グローバルスコープに公開（HTMLのonclick属性から呼べるように）
+        // グローバルスコープに公開
         window.startGame = startGame;
         window.toggleControlMode = toggleControlMode;
         window.showRanking = showRanking;
