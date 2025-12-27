@@ -470,7 +470,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(15, 23, 42, 0.95);
+            background-color: rgba(15, 23, 42, 0.5);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1099,7 +1099,9 @@
             constructor(mode = 'normal') {
                 this.mode = mode; // 'normal', 'sprint1m', 'time10', 'time20', 'time50', 'time100'
                 this.BOARD_WIDTH = 10;
-                this.BOARD_HEIGHT = 20;
+                this.BOARD_HEIGHT = 24;  // 合計24行（可視20行 + バッファ4行）
+                this.VISIBLE_ROWS = 20;  // 可視領域は20行
+                this.BUFFER_ROWS = 4;    // 上部バッファ4行
                 
                 // ゲーム状態（ステートマシン）
                 this.gameState = 'PLAYING'; // 'PLAYING', 'LINE_CLEARING', 'SPAWNING', 'GAME_OVER', 'PAUSED'
@@ -1110,7 +1112,7 @@
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.canvas.width = this.BOARD_WIDTH * this.BLOCK_SIZE;
-                this.canvas.height = this.BOARD_HEIGHT * this.BLOCK_SIZE;
+                this.canvas.height = this.VISIBLE_ROWS * this.BLOCK_SIZE; // 可視領域のみ描画
 
                 this.nextCanvas = document.getElementById('nextCanvas');
                 this.nextCtx = this.nextCanvas.getContext('2d');
@@ -1237,10 +1239,21 @@
             }
 
             checkTimeAttackComplete() {
-                // タイムアタックモード: 目標ライン達成で終了
+                // 1分間スプリントモード: 60秒経過でゲーム終了
+                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000) {
+                    this.isGameOver = true;
+                    if (this.animationFrameId) {
+                        cancelAnimationFrame(this.animationFrameId);
+                    }
+                    this.stopTimer();
+                    this.saveRecord();
+                    this.showTimeAttackComplete();
+                    return;
+                }
+                
+                // 通常のタイムアタック: 目標ライン達成で終了
                 if (this.targetLines && this.linesRemoved >= this.targetLines) {
                     this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
                     if (this.animationFrameId) {
                         cancelAnimationFrame(this.animationFrameId);
                     }
@@ -1392,19 +1405,6 @@
                     this.timerStarted = true;
                 }
                 
-                // 1分間スプリントモード: 常時タイマーチェック
-                if (this.mode === 'sprint1m' && this.elapsedTime >= 60000 && !this.isGameOver) {
-                    this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
-                    }
-                    this.stopTimer();
-                    this.saveRecord();
-                    this.showTimeAttackComplete();
-                    return;
-                }
-                
                 // 落下速度の計算（レベルに応じて変化）
                 const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
                 
@@ -1435,22 +1435,39 @@
                 this.nextPieceType = this.getNextPiece();
                 this.drawNext();
 
+                // 新しいピースがスポーン可能かチェック
                 if (this.checkCollision(newPiece, 0, 0)) {
-                    this.isGameOver = true;
-                    this.gameState = 'GAME_OVER';
-                    if (this.animationFrameId) {
-                        cancelAnimationFrame(this.animationFrameId);
+                    // スポーン時に衝突する場合、可視領域にブロックがあるかチェック
+                    let hasBlockInVisibleArea = false;
+                    for (let y = this.BUFFER_ROWS; y < this.BOARD_HEIGHT; y++) {
+                        for (let x = 0; x < this.BOARD_WIDTH; x++) {
+                            if (this.board[y][x] !== null) {
+                                hasBlockInVisibleArea = true;
+                                break;
+                            }
+                        }
+                        if (hasBlockInVisibleArea) break;
                     }
-                    clearInterval(this.timerInterval);
-                    if (this.mode === 'normal') {
-                        this.saveRecord();
+                    
+                    // 可視領域にブロックがある場合のみゲームオーバー
+                    if (hasBlockInVisibleArea) {
+                        this.isGameOver = true;
+                        this.gameState = 'GAME_OVER';
+                        if (this.animationFrameId) {
+                            cancelAnimationFrame(this.animationFrameId);
+                        }
+                        clearInterval(this.timerInterval);
+                        if (this.mode === 'normal') {
+                            this.saveRecord();
+                        }
+                        this.showGameOver();
+                        return;
                     }
-                    this.showGameOver();
-                } else {
-                    this.currentPiece = newPiece;
-                    // 状態をPLAYINGに戻す
-                    this.gameState = 'PLAYING';
                 }
+                
+                this.currentPiece = newPiece;
+                // 状態をPLAYINGに戻す
+                this.gameState = 'PLAYING';
             }
 
             checkCollision(piece, offsetX, offsetY) {
@@ -1733,9 +1750,12 @@
                 this.ctx.fillStyle = '#1e293b';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-                // ボード上の固定されたブロックを描画
-                for (let y = 0; y < this.BOARD_HEIGHT; y++) {
+                // ボード上の固定されたブロックを描画（可視領域のみ）
+                for (let y = this.BUFFER_ROWS; y < this.BOARD_HEIGHT; y++) {
                     for (let x = 0; x < this.BOARD_WIDTH; x++) {
+                        // 可視領域でのY座標を計算（バッファ行を引く）
+                        const visibleY = y - this.BUFFER_ROWS;
+                        
                         if (this.board[y][x]) {
                             // フラッシュ対象のラインは白く光らせる（1回だけ）
                             if (this.gameState === 'LINE_CLEARING' && 
@@ -1746,16 +1766,16 @@
                                 this.ctx.shadowColor = '#ffffff';
                                 this.ctx.fillRect(
                                     x * this.BLOCK_SIZE,
-                                    y * this.BLOCK_SIZE,
+                                    visibleY * this.BLOCK_SIZE,
                                     this.BLOCK_SIZE,
                                     this.BLOCK_SIZE
                                 );
                                 this.ctx.shadowBlur = 0;
                             } else {
-                                this.drawBlock(x, y, this.board[y][x]);
+                                this.drawBlock(x, visibleY, this.board[y][x]);
                             }
                         } else {
-                            this.drawEmptyBlock(x, y);
+                            this.drawEmptyBlock(x, visibleY);
                         }
                     }
                 }
@@ -1774,12 +1794,14 @@
                                 if (ghost.shape[i][j] === 1) {
                                     const x = ghost.position.x + j;
                                     const y = ghost.position.y + i;
-                                    if (y >= 0) {
+                                    // 可視領域内のみ描画
+                                    if (y >= this.BUFFER_ROWS) {
+                                        const visibleY = y - this.BUFFER_ROWS;
                                         // 半透明の塗りつぶし
                                         this.ctx.fillStyle = this.currentPiece.color + '40';
                                         this.ctx.fillRect(
                                             x * this.BLOCK_SIZE,
-                                            y * this.BLOCK_SIZE,
+                                            visibleY * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
@@ -1788,7 +1810,7 @@
                                         this.ctx.lineWidth = 2;
                                         this.ctx.strokeRect(
                                             x * this.BLOCK_SIZE,
-                                            y * this.BLOCK_SIZE,
+                                            visibleY * this.BLOCK_SIZE,
                                             this.BLOCK_SIZE,
                                             this.BLOCK_SIZE
                                         );
@@ -1798,14 +1820,16 @@
                         }
                     }
 
-                    // 現在のピースを描画（ネオン効果付き）
+                    // 現在のピースを描画（ネオン効果付き、可視領域のみ）
                     for (let i = 0; i < this.currentPiece.shape.length; i++) {
                         for (let j = 0; j < this.currentPiece.shape[i].length; j++) {
                             if (this.currentPiece.shape[i][j] === 1) {
                                 const x = this.currentPiece.position.x + j;
                                 const y = this.currentPiece.position.y + i;
-                                if (y >= 0) {
-                                    this.drawBlock(x, y, this.currentPiece.color);
+                                // 可視領域内のみ描画
+                                if (y >= this.BUFFER_ROWS) {
+                                    const visibleY = y - this.BUFFER_ROWS;
+                                    this.drawBlock(x, visibleY, this.currentPiece.color);
                                 }
                             }
                         }
