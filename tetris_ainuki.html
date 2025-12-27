@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#000000">
     <meta name="description" content="クラシックなテトリスゲーム">
     <link rel="manifest" href="manifest.json">
@@ -13,12 +13,6 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        /* iOS ダブルタップズーム防止 */
-        html {
-            touch-action: manipulation;
-            -webkit-text-size-adjust: 100%;
         }
 
         body {
@@ -367,13 +361,9 @@
             cursor: pointer;
             transition: all 0.1s;
             user-select: none;
-            -webkit-user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            /* iOS連打対策 */
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .dpad-btn:active {
@@ -405,13 +395,9 @@
             cursor: pointer;
             transition: all 0.1s;
             user-select: none;
-            -webkit-user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            /* iOS連打対策 */
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
         }
 
         .dpad-center-btn:active {
@@ -458,11 +444,6 @@
             border-radius: 10px;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.1s;
-            /* iOS連打対策 */
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-user-select: none;
         }
 
         button:hover {
@@ -600,82 +581,6 @@
             font-weight: bold;
         }
 
-        /* AI観戦モードトグル */
-        .ai-toggle-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            border: 2px solid #ff00ff;
-            border-radius: 12px;
-            flex-wrap: wrap;
-        }
-
-        .ai-toggle-label {
-            position: relative;
-            width: 60px;
-            height: 32px;
-            cursor: pointer;
-        }
-
-        .ai-toggle-label input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .ai-toggle-slider {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #333;
-            border-radius: 32px;
-            transition: 0.3s;
-        }
-
-        .ai-toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 24px;
-            width: 24px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            border-radius: 50%;
-            transition: 0.3s;
-        }
-
-        .ai-toggle-label input:checked + .ai-toggle-slider {
-            background: linear-gradient(135deg, #ff00ff, #8800ff);
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-        }
-
-        .ai-toggle-label input:checked + .ai-toggle-slider:before {
-            transform: translateX(28px);
-        }
-
-        .ai-toggle-text {
-            color: #ff00ff;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .ai-toggle-desc {
-            color: #888;
-            font-size: 14px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .ai-toggle-desc.active {
-            color: #ff00ff;
-        }
-
         .rankings {
             background: rgba(30, 41, 59, 0.3);
             padding: 20px;
@@ -693,9 +598,8 @@
         .ranking-tabs {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             justify-content: center;
-            flex-wrap: wrap;
         }
 
         .ranking-tab {
@@ -713,35 +617,6 @@
             background: #00ffff;
             color: #000;
             border-color: #00ffff;
-        }
-
-        .ranking-subtabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            justify-content: center;
-        }
-
-        .ranking-subtab {
-            background: rgba(128, 128, 128, 0.2);
-            color: #888;
-            border: 1px solid #444;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.3s;
-        }
-
-        .ranking-subtab.active {
-            background: linear-gradient(135deg, #ff00ff, #8800ff);
-            color: #fff;
-            border-color: #ff00ff;
-        }
-
-        .ranking-subtab:first-child.active {
-            background: linear-gradient(135deg, #00aaff, #0066ff);
-            border-color: #00aaff;
         }
 
         .ranking-list {
@@ -996,16 +871,6 @@
     <div id="homeScreen" class="home-screen">
         <h1 class="home-title">TETRIS</h1>
         
-        <!-- AI観戦モードトグル -->
-        <div class="ai-toggle-container">
-            <label class="ai-toggle-label">
-                <input type="checkbox" id="aiModeToggle" onchange="toggleAIMode()">
-                <span class="ai-toggle-slider"></span>
-            </label>
-            <span class="ai-toggle-text">🤖 AI観戦モード</span>
-            <span class="ai-toggle-desc" id="aiModeDesc">OFF - 自分でプレイ</span>
-        </div>
-        
         <div class="mode-selection">
             <div class="mode-button" onclick="startGame('normal')">
                 <h2>ノーマル</h2>
@@ -1059,10 +924,6 @@
                 <button class="ranking-tab" onclick="showRanking('time20', event)">20ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time50', event)">50ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time100', event)">100ライン</button>
-            </div>
-            <div class="ranking-subtabs">
-                <button class="ranking-subtab active" onclick="toggleRankingType('human', event)">👤 人間</button>
-                <button class="ranking-subtab" onclick="toggleRankingType('ai', event)">🤖 AI</button>
             </div>
             <div class="ranking-list" id="rankingList"></div>
         </div>
@@ -1257,9 +1118,8 @@
         // TetrisGameクラス
         // ===========================================
         class TetrisGame {
-            constructor(mode = 'normal', aiEnabled = false) {
+            constructor(mode = 'normal') {
                 this.mode = mode;
-                this.isAIMode = aiEnabled;  // AIモードフラグ
                 this.blockSize = this.calculateBlockSize();
                 
                 // キャンバス初期化
@@ -1314,12 +1174,6 @@
                 
                 // 目標ライン数
                 this.targetLines = this.getTargetLines();
-                
-                // AI関連（isAIModeはコンストラクタで設定済み）
-                this.ai = null;
-                this.aiMoveQueue = [];
-                this.aiMoveTimer = 0;
-                this.aiMoveInterval = 50;  // AIの動作間隔（ms）
             }
 
             getTargetLines() {
@@ -1346,7 +1200,6 @@
             updateModeInfo() {
                 const modeInfo = document.getElementById('modeInfo');
                 const restartButton = document.getElementById('restartButton');
-                const controlPanel = document.getElementById('controlTogglePanel');
                 
                 const modeTexts = {
                     'normal': '📊 ノーマルモード',
@@ -1357,20 +1210,8 @@
                     'time100': '⏱️ 100ライン タイムアタック'
                 };
                 
-                let displayText = modeTexts[this.mode] || '';
-                
-                // AIモードの場合は接頭辞を追加
-                if (this.isAIMode) {
-                    displayText = '🤖 AI ' + displayText;
-                }
-                
-                modeInfo.textContent = displayText;
-                restartButton.style.display = (this.mode === 'normal') ? 'none' : 'block';
-                
-                // AIモードでは操作パネルを非表示
-                if (controlPanel) {
-                    controlPanel.style.display = this.isAIMode ? 'none' : 'block';
-                }
+                modeInfo.textContent = modeTexts[this.mode] || '';
+                restartButton.style.display = this.mode === 'normal' ? 'none' : 'block';
             }
 
             // ===========================================
@@ -1386,12 +1227,6 @@
                 this.nextPieceType = this.getNextPieceFromBag();
                 this.spawnNewPiece();
                 this.drawNext();
-                
-                // AIモードの場合はAIを初期化
-                if (this.isAIMode) {
-                    this.ai = new TetrisAI(this);
-                    this.planAIMove();
-                }
                 
                 this.lastUpdateTime = performance.now();
                 this.startGameLoop();
@@ -1499,12 +1334,6 @@
                     return;
                 }
                 
-                // AIモードの処理
-                if (this.isAIMode && this.gameState === GAME_STATES.PLAYING && this.currentPiece !== null) {
-                    this.updateAI(deltaTime);
-                    return;  // AIモードでは通常の落下処理をスキップ
-                }
-                
                 // 通常プレイ中の落下処理
                 if (this.gameState === GAME_STATES.PLAYING && this.currentPiece !== null) {
                     const dropInterval = Math.max(200, 700 - (this.level - 1) * 50);
@@ -1515,115 +1344,6 @@
                         this.moveDown(false);
                     }
                 }
-            }
-            
-            // AI更新処理
-            updateAI(deltaTime) {
-                this.aiMoveTimer += deltaTime;
-                
-                // 一定間隔でAIの動作を実行
-                if (this.aiMoveTimer >= this.aiMoveInterval) {
-                    this.aiMoveTimer = 0;
-                    
-                    if (this.aiMoveQueue.length > 0) {
-                        // キューから次の動作を取り出して実行
-                        const move = this.aiMoveQueue.shift();
-                        this.executeAIMove(move);
-                    } else {
-                        // キューが空なら次の手を計画
-                        this.planAIMove();
-                    }
-                }
-            }
-            
-            // AIの次の手を計画
-            planAIMove() {
-                if (!this.ai || !this.currentPiece) {
-                    return;
-                }
-                
-                const bestMove = this.ai.findBestMove();
-                if (bestMove) {
-                    this.aiMoveQueue = this.ai.generateMoveQueue(bestMove);
-                } else {
-                    // 最善手が見つからない場合はとりあえずドロップ
-                    this.aiMoveQueue = ['drop'];
-                }
-            }
-            
-            // AIの動作を実行
-            executeAIMove(move) {
-                if (!this.currentPiece) {
-                    return;
-                }
-                
-                switch (move) {
-                    case 'left':
-                        this.moveLeftInternal();
-                        break;
-                    case 'right':
-                        this.moveRightInternal();
-                        break;
-                    case 'rotate':
-                        this.rotateInternal();
-                        break;
-                    case 'drop':
-                        this.hardDropInternal();
-                        break;
-                }
-            }
-            
-            // AI用の内部移動メソッド（ガード条件なし）
-            moveLeftInternal() {
-                if (!this.currentPiece) return;
-                if (!this.checkCollision(this.currentPiece, -1, 0)) {
-                    this.currentPiece.position.x--;
-                    this.lastMoveWasRotation = false;
-                }
-            }
-            
-            moveRightInternal() {
-                if (!this.currentPiece) return;
-                if (!this.checkCollision(this.currentPiece, 1, 0)) {
-                    this.currentPiece.position.x++;
-                    this.lastMoveWasRotation = false;
-                }
-            }
-            
-            rotateInternal() {
-                if (!this.currentPiece) return;
-                
-                const rotated = this.currentPiece.rotate();
-                
-                if (!this.checkCollision(rotated, 0, 0)) {
-                    this.currentPiece = rotated;
-                    this.lastMoveWasRotation = true;
-                    return;
-                }
-
-                // 壁キック
-                const kickTests = [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1]];
-                for (const [kickX, kickY] of kickTests) {
-                    const kicked = rotated.clone();
-                    kicked.position.x += kickX;
-                    kicked.position.y += kickY;
-
-                    if (!this.checkCollision(kicked, 0, 0)) {
-                        this.currentPiece = kicked;
-                        this.lastMoveWasRotation = true;
-                        return;
-                    }
-                }
-            }
-            
-            hardDropInternal() {
-                if (!this.currentPiece) return;
-                
-                while (!this.checkCollision(this.currentPiece, 0, 1)) {
-                    this.currentPiece.position.y++;
-                }
-                this.lastMoveWasRotation = false;
-                this.lockPiece();
             }
 
             // ===========================================
@@ -1643,12 +1363,6 @@
                 } else {
                     this.currentPiece = newPiece;
                     this.gameState = GAME_STATES.PLAYING;
-                    
-                    // AIモードの場合は新しいピースの手を計画
-                    if (this.isAIMode && this.ai) {
-                        this.aiMoveQueue = [];
-                        this.planAIMove();
-                    }
                 }
             }
 
@@ -1684,9 +1398,22 @@
                 return false;
             }
 
+            moveDown(manual = false) {
+                if (!this.currentPiece || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+                    return;
+                }
+
+                if (!this.checkCollision(this.currentPiece, 0, 1)) {
+                    this.currentPiece.position.y++;
+                    if (manual) {
+                        this.lastMoveWasRotation = false;
+                    }
+                } else {
+                    this.lockPiece();
+                }
+            }
+
             moveLeft() {
-                // AIモードでは人間の操作を無効化
-                if (this.isAIMode) return;
                 if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
                     return;
                 }
@@ -1698,8 +1425,6 @@
             }
 
             moveRight() {
-                // AIモードでは人間の操作を無効化
-                if (this.isAIMode) return;
                 if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
                     return;
                 }
@@ -1711,8 +1436,6 @@
             }
 
             rotate() {
-                // AIモードでは人間の操作を無効化
-                if (this.isAIMode) return;
                 if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
                     return;
                 }
@@ -1742,8 +1465,6 @@
             }
 
             hardDrop() {
-                // AIモードでは人間の操作を無効化
-                if (this.isAIMode) return;
                 if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
                     return;
                 }
@@ -1753,23 +1474,6 @@
                 }
                 this.lastMoveWasRotation = false;
                 this.lockPiece();
-            }
-
-            moveDown(manual = false) {
-                // AIモードでは人間の操作を無効化
-                if (this.isAIMode && manual) return;
-                if (!this.currentPiece || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
-                    return;
-                }
-
-                if (!this.checkCollision(this.currentPiece, 0, 1)) {
-                    this.currentPiece.position.y++;
-                    if (manual) {
-                        this.lastMoveWasRotation = false;
-                    }
-                } else {
-                    this.lockPiece();
-                }
             }
 
             // ===========================================
@@ -1941,7 +1645,6 @@
                 }
                 this.stopTimer();
                 
-                // ノーマルモードはゲームオーバーでも記録保存
                 if (this.mode === 'normal') {
                     this.saveRecord();
                 }
@@ -1982,17 +1685,12 @@
 
             saveRecord() {
                 const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
-                
-                // AIモードの場合は別のキーに保存（例: normal_ai, sprint1m_ai）
-                const recordKey = this.isAIMode ? `${this.mode}_ai` : this.mode;
-                
-                if (!records[recordKey]) {
-                    records[recordKey] = [];
+                if (!records[this.mode]) {
+                    records[this.mode] = [];
                 }
 
                 const record = {
                     mode: this.mode,
-                    isAI: this.isAIMode,
                     date: new Date().toISOString()
                 };
 
@@ -2004,8 +1702,8 @@
                     record.time = this.elapsedTime;
                 }
 
-                records[recordKey].push(record);
-                records[recordKey].sort((a, b) => {
+                records[this.mode].push(record);
+                records[this.mode].sort((a, b) => {
                     if (this.mode === 'normal') {
                         return b.score - a.score;
                     } else if (this.mode === 'sprint1m') {
@@ -2013,7 +1711,7 @@
                     }
                     return a.time - b.time;
                 });
-                records[recordKey] = records[recordKey].slice(0, 10);
+                records[this.mode] = records[this.mode].slice(0, 10);
 
                 localStorage.setItem('tetrisRecords', JSON.stringify(records));
             }
@@ -2318,310 +2016,10 @@
         }
 
         // ===========================================
-        // TetrisAI - 観戦用自動プレイAI
-        // ===========================================
-        class TetrisAI {
-            constructor(game) {
-                this.game = game;
-                
-                // 評価関数の重み（チューニング可能）
-                this.weights = {
-                    height: -0.5,        // 高さペナルティ
-                    holes: -3.5,         // 穴ペナルティ（強め）
-                    bumpiness: -0.2,     // 凹凸ペナルティ
-                    linesCleared: 3.0,   // ライン消去ボーナス
-                    wellDepth: 0.1       // 井戸（テトリス用の溝）ボーナス
-                };
-                
-                // AI動作用
-                this.currentMove = null;
-                this.moveQueue = [];
-                this.thinkingComplete = false;
-            }
-
-            // メイン: 最善手を探索
-            findBestMove() {
-                if (!this.game.currentPiece) {
-                    return null;
-                }
-
-                const piece = this.game.currentPiece;
-                let bestScore = -Infinity;
-                let bestMove = null;
-
-                // 全回転状態を試す（0, 1, 2, 3回転）
-                const rotations = this.getRotationCount(piece.type);
-                
-                for (let rotation = 0; rotation < rotations; rotation++) {
-                    const rotatedPiece = this.getRotatedPiece(piece, rotation);
-                    
-                    // 全x位置を試す
-                    const minX = -2;
-                    const maxX = BOARD_WIDTH + 2;
-                    
-                    for (let x = minX; x < maxX; x++) {
-                        const testPiece = this.clonePiece(rotatedPiece);
-                        testPiece.position.x = x;
-                        
-                        // この位置が有効か確認
-                        if (this.isValidPosition(testPiece)) {
-                            // ハードドロップした位置を取得
-                            const dropY = this.getDropPosition(testPiece);
-                            testPiece.position.y = dropY;
-                            
-                            // この配置をシミュレーション
-                            const simulatedBoard = this.simulatePlacement(testPiece);
-                            const score = this.evaluateBoard(simulatedBoard);
-                            
-                            if (score > bestScore) {
-                                bestScore = score;
-                                bestMove = {
-                                    rotation: rotation,
-                                    x: x,
-                                    y: dropY
-                                };
-                            }
-                        }
-                    }
-                }
-
-                return bestMove;
-            }
-
-            // ピースの回転数を取得（Oは1、Iは2、他は4）
-            getRotationCount(type) {
-                if (type === 'O') return 1;
-                if (type === 'I' || type === 'S' || type === 'Z') return 2;
-                return 4;
-            }
-
-            // ピースを指定回数回転
-            getRotatedPiece(piece, rotations) {
-                let rotated = this.clonePiece(piece);
-                for (let i = 0; i < rotations; i++) {
-                    rotated = rotated.rotate();
-                }
-                return rotated;
-            }
-
-            // ピースをクローン
-            clonePiece(piece) {
-                const cloned = new Tetromino(piece.type);
-                cloned.shape = JSON.parse(JSON.stringify(piece.shape));
-                cloned.position = { ...piece.position };
-                return cloned;
-            }
-
-            // 位置が有効か確認（ゲームのcheckCollisionを使用）
-            isValidPosition(piece) {
-                return !this.checkCollisionForAI(piece, 0, 0);
-            }
-
-            // AI用の衝突判定（ゲームのボードを参照）
-            checkCollisionForAI(piece, offsetX, offsetY) {
-                for (let i = 0; i < piece.shape.length; i++) {
-                    for (let j = 0; j < piece.shape[i].length; j++) {
-                        if (piece.shape[i][j] === 1) {
-                            const x = piece.position.x + j + offsetX;
-                            const y = piece.position.y + i + offsetY;
-                            const boardY = y + BUFFER_HEIGHT;
-
-                            if (x < 0 || x >= BOARD_WIDTH || boardY >= TOTAL_HEIGHT) {
-                                return true;
-                            }
-
-                            if (boardY >= 0 && this.game.board[boardY] && this.game.board[boardY][x] !== null) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                return false;
-            }
-
-            // ハードドロップした時のY座標を取得
-            getDropPosition(piece) {
-                const testPiece = this.clonePiece(piece);
-                while (!this.checkCollisionForAI(testPiece, 0, 1)) {
-                    testPiece.position.y++;
-                }
-                return testPiece.position.y;
-            }
-
-            // 配置をシミュレーション（ボードのコピーを返す）
-            simulatePlacement(piece) {
-                // ボードをコピー
-                const boardCopy = this.game.board.map(row => [...row]);
-                
-                // ピースを配置
-                for (let i = 0; i < piece.shape.length; i++) {
-                    for (let j = 0; j < piece.shape[i].length; j++) {
-                        if (piece.shape[i][j] === 1) {
-                            const x = piece.position.x + j;
-                            const y = piece.position.y + i;
-                            const boardY = y + BUFFER_HEIGHT;
-                            
-                            if (boardY >= 0 && boardY < TOTAL_HEIGHT && x >= 0 && x < BOARD_WIDTH) {
-                                boardCopy[boardY][x] = piece.color;
-                            }
-                        }
-                    }
-                }
-                
-                // ライン消去をシミュレーション
-                return this.simulateLineClear(boardCopy);
-            }
-
-            // ライン消去をシミュレーション
-            simulateLineClear(board) {
-                const newBoard = [];
-                let linesCleared = 0;
-                
-                for (let y = 0; y < TOTAL_HEIGHT; y++) {
-                    if (!board[y].every(cell => cell !== null)) {
-                        newBoard.push(board[y]);
-                    } else {
-                        linesCleared++;
-                    }
-                }
-                
-                while (newBoard.length < TOTAL_HEIGHT) {
-                    newBoard.unshift(Array(BOARD_WIDTH).fill(null));
-                }
-                
-                newBoard.linesCleared = linesCleared;
-                return newBoard;
-            }
-
-            // ボードを評価
-            evaluateBoard(board) {
-                const linesCleared = board.linesCleared || 0;
-                const heights = this.getColumnHeights(board);
-                const aggregateHeight = heights.reduce((a, b) => a + b, 0);
-                const holes = this.countHoles(board, heights);
-                const bumpiness = this.calculateBumpiness(heights);
-                const wellDepth = this.calculateWellDepth(heights);
-
-                return (
-                    this.weights.height * aggregateHeight +
-                    this.weights.holes * holes +
-                    this.weights.bumpiness * bumpiness +
-                    this.weights.linesCleared * linesCleared * linesCleared + // 4ライン消しを優遇
-                    this.weights.wellDepth * wellDepth
-                );
-            }
-
-            // 各列の高さを取得
-            getColumnHeights(board) {
-                const heights = [];
-                for (let x = 0; x < BOARD_WIDTH; x++) {
-                    let height = 0;
-                    for (let y = 0; y < TOTAL_HEIGHT; y++) {
-                        if (board[y][x] !== null) {
-                            height = TOTAL_HEIGHT - y;
-                            break;
-                        }
-                    }
-                    heights.push(height);
-                }
-                return heights;
-            }
-
-            // 穴の数をカウント
-            countHoles(board, heights) {
-                let holes = 0;
-                for (let x = 0; x < BOARD_WIDTH; x++) {
-                    let blockFound = false;
-                    for (let y = 0; y < TOTAL_HEIGHT; y++) {
-                        if (board[y][x] !== null) {
-                            blockFound = true;
-                        } else if (blockFound) {
-                            holes++;
-                        }
-                    }
-                }
-                return holes;
-            }
-
-            // 凹凸度を計算
-            calculateBumpiness(heights) {
-                let bumpiness = 0;
-                for (let i = 0; i < heights.length - 1; i++) {
-                    bumpiness += Math.abs(heights[i] - heights[i + 1]);
-                }
-                return bumpiness;
-            }
-
-            // 井戸の深さを計算（テトリス用の溝）
-            calculateWellDepth(heights) {
-                let wellDepth = 0;
-                for (let i = 0; i < heights.length; i++) {
-                    const leftHeight = i > 0 ? heights[i - 1] : Infinity;
-                    const rightHeight = i < heights.length - 1 ? heights[i + 1] : Infinity;
-                    const minNeighbor = Math.min(leftHeight, rightHeight);
-                    
-                    if (heights[i] < minNeighbor) {
-                        wellDepth += minNeighbor - heights[i];
-                    }
-                }
-                return wellDepth;
-            }
-
-            // 最善手へのムーブキューを生成
-            generateMoveQueue(targetMove) {
-                if (!targetMove || !this.game.currentPiece) {
-                    return [];
-                }
-
-                const moves = [];
-                const currentPiece = this.game.currentPiece;
-
-                // まず回転
-                for (let i = 0; i < targetMove.rotation; i++) {
-                    moves.push('rotate');
-                }
-
-                // 次に横移動
-                const currentX = currentPiece.position.x;
-                const targetX = targetMove.x;
-                const deltaX = targetX - currentX;
-                
-                if (deltaX < 0) {
-                    for (let i = 0; i < Math.abs(deltaX); i++) {
-                        moves.push('left');
-                    }
-                } else if (deltaX > 0) {
-                    for (let i = 0; i < deltaX; i++) {
-                        moves.push('right');
-                    }
-                }
-
-                // 最後にハードドロップ
-                moves.push('drop');
-
-                return moves;
-            }
-        }
-
-        // ===========================================
         // グローバル変数と関数
         // ===========================================
         let game = null;
         let controlMode = 'swipe';
-        let isAIModeEnabled = false;  // AIモードのグローバルフラグ
-        
-        function toggleAIMode() {
-            isAIModeEnabled = document.getElementById('aiModeToggle').checked;
-            const desc = document.getElementById('aiModeDesc');
-            
-            if (isAIModeEnabled) {
-                desc.textContent = 'ON - AIがプレイします';
-                desc.classList.add('active');
-            } else {
-                desc.textContent = 'OFF - 自分でプレイ';
-                desc.classList.remove('active');
-            }
-        }
         
         function setupGlobalControls() {
             // キーボード操作
@@ -2747,36 +2145,35 @@
                 }
             });
 
-            // ボタン操作（touchstartで即座に反応、clickはフォールバック）
-            const gameButtons = [
-                { id: 'leftBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveLeft() },
-                { id: 'rightBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveRight() },
-                { id: 'centerBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveDown(true) },
-                { id: 'upBtn', action: () => game && !game.isPaused && !game.isGameOver && game.rotate() },
-                { id: 'downBtn2', action: () => game && !game.isPaused && !game.isGameOver && game.hardDrop() }
-            ];
+            // ボタン操作
+            document.getElementById('leftBtn').addEventListener('click', () => {
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveLeft();
+                }
+            });
 
-            gameButtons.forEach(({ id, action }) => {
-                const btn = document.getElementById(id);
-                let touched = false;
+            document.getElementById('rightBtn').addEventListener('click', () => {
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveRight();
+                }
+            });
 
-                btn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    touched = true;
-                    action();
-                }, { passive: false });
+            document.getElementById('centerBtn').addEventListener('click', () => {
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.moveDown(true);
+                }
+            });
 
-                btn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                }, { passive: false });
+            document.getElementById('upBtn').addEventListener('click', () => {
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.rotate();
+                }
+            });
 
-                // マウス用フォールバック（PCでも動作）
-                btn.addEventListener('click', (e) => {
-                    if (!touched) {
-                        action();
-                    }
-                    touched = false;
-                });
+            document.getElementById('downBtn2').addEventListener('click', () => {
+                if (game && !game.isPaused && !game.isGameOver) {
+                    game.hardDrop();
+                }
             });
         }
         
@@ -2811,19 +2208,12 @@
             document.getElementById('gameOverOverlay').classList.add('hidden');
             document.getElementById('pauseOverlay').classList.add('hidden');
             
-            // AIモードでない場合のみボタンコントロールを表示
-            if (!isAIModeEnabled) {
-                const isButton = document.getElementById('controlToggle').checked;
-                if (isButton) {
-                    document.getElementById('buttonControls').classList.remove('hidden');
-                }
-            } else {
-                // AIモードではボタンを非表示
-                document.getElementById('buttonControls').classList.add('hidden');
+            const isButton = document.getElementById('controlToggle').checked;
+            if (isButton) {
+                document.getElementById('buttonControls').classList.remove('hidden');
             }
             
-            // AIモードはグローバルフラグから取得
-            game = new TetrisGame(mode, isAIModeEnabled);
+            game = new TetrisGame(mode);
         }
 
         function loadBestRecords() {
@@ -2850,13 +2240,7 @@
             });
         }
 
-        // ランキング表示用のグローバル状態
-        let currentRankingMode = 'normal';
-        let currentRankingType = 'human';  // 'human' or 'ai'
-
         function showRanking(mode, event) {
-            currentRankingMode = mode;
-            
             if (event && event.target) {
                 document.querySelectorAll('.ranking-tab').forEach(tab => {
                     tab.classList.remove('active');
@@ -2864,46 +2248,22 @@
                 event.target.classList.add('active');
             }
             
-            updateRankingList();
-        }
-        
-        function toggleRankingType(type, event) {
-            currentRankingType = type;
-            
-            if (event && event.target) {
-                document.querySelectorAll('.ranking-subtab').forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                event.target.classList.add('active');
-            }
-            
-            updateRankingList();
-        }
-        
-        function updateRankingList() {
             const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
             const rankingList = document.getElementById('rankingList');
             
-            // AIの場合はキーにサフィックスを追加
-            const recordKey = currentRankingType === 'ai' ? `${currentRankingMode}_ai` : currentRankingMode;
-            
-            if (!records[recordKey] || records[recordKey].length === 0) {
-                const typeLabel = currentRankingType === 'ai' ? '🤖 AI' : '👤 人間';
-                rankingList.innerHTML = `<div style="text-align:center; color:#888; padding:20px;">${typeLabel}の記録はまだありません</div>`;
+            if (!records[mode] || records[mode].length === 0) {
+                rankingList.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">まだ記録がありません</div>';
                 return;
             }
             
-            rankingList.innerHTML = records[recordKey].map((record, index) => {
+            rankingList.innerHTML = records[mode].map((record, index) => {
                 const date = new Date(record.date);
                 const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
                 
                 let displayValue = '';
-                // recordKeyからベースのmodeを取得
-                const baseMode = currentRankingMode;
-                
-                if (baseMode === 'normal') {
+                if (mode === 'normal') {
                     displayValue = `${record.score.toLocaleString()} 点`;
-                } else if (baseMode === 'sprint1m') {
+                } else if (mode === 'sprint1m') {
                     displayValue = `${record.lines} ライン`;
                 } else {
                     const totalSeconds = record.time / 1000;
@@ -2995,9 +2355,7 @@
         window.startGame = startGame;
         window.toggleControlMode = toggleControlMode;
         window.showRanking = showRanking;
-        window.toggleRankingType = toggleRankingType;
         window.loadBestRecords = loadBestRecords;
-        window.toggleAIMode = toggleAIMode;
 
         // 初期化
         window.addEventListener('load', () => {
