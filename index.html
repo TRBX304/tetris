@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
     <meta name="description" content="クラシックなテトリスゲーム">
     <link rel="manifest" href="manifest.json">
@@ -13,6 +13,12 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        /* iOS ダブルタップズーム防止 */
+        html {
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
@@ -361,9 +367,13 @@
             cursor: pointer;
             transition: all 0.1s;
             user-select: none;
+            -webkit-user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
+            /* iOS連打対策 */
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .dpad-btn:active {
@@ -395,9 +405,13 @@
             cursor: pointer;
             transition: all 0.1s;
             user-select: none;
+            -webkit-user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
+            /* iOS連打対策 */
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .dpad-center-btn:active {
@@ -444,6 +458,11 @@
             border-radius: 10px;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.1s;
+            /* iOS連打対策 */
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         button:hover {
@@ -2145,35 +2164,36 @@
                 }
             });
 
-            // ボタン操作
-            document.getElementById('leftBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) {
-                    game.moveLeft();
-                }
-            });
+            // ボタン操作（touchstartで即座に反応、clickはフォールバック）
+            const gameButtons = [
+                { id: 'leftBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveLeft() },
+                { id: 'rightBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveRight() },
+                { id: 'centerBtn', action: () => game && !game.isPaused && !game.isGameOver && game.moveDown(true) },
+                { id: 'upBtn', action: () => game && !game.isPaused && !game.isGameOver && game.rotate() },
+                { id: 'downBtn2', action: () => game && !game.isPaused && !game.isGameOver && game.hardDrop() }
+            ];
 
-            document.getElementById('rightBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) {
-                    game.moveRight();
-                }
-            });
+            gameButtons.forEach(({ id, action }) => {
+                const btn = document.getElementById(id);
+                let touched = false;
 
-            document.getElementById('centerBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) {
-                    game.moveDown(true);
-                }
-            });
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    touched = true;
+                    action();
+                }, { passive: false });
 
-            document.getElementById('upBtn').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) {
-                    game.rotate();
-                }
-            });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
 
-            document.getElementById('downBtn2').addEventListener('click', () => {
-                if (game && !game.isPaused && !game.isGameOver) {
-                    game.hardDrop();
-                }
+                // マウス用フォールバック（PCでも動作）
+                btn.addEventListener('click', (e) => {
+                    if (!touched) {
+                        action();
+                    }
+                    touched = false;
+                });
             });
         }
         
