@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <meta name="description" content="クラシックなテトリスゲーム">
+    <meta name="description" content="クラシックなテトリスゲーム、無料で遊べるクラシックなブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
     <link rel="icon" href="/icon-192.png">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0b45464586344910a274a959d7a31fde"}'></script><!-- End Cloudflare Web Analytics -->
-    <title>TETRIS-LIKE</title>
+    <title>TETRIS-LIKE | 無料で遊べるブラウザ版テトリス風ゲーム</title>
     <style>
         * {
             margin: 0;
@@ -993,10 +993,21 @@
 <body>
     <!-- 星座風背景 -->
     <div class="stars-background" id="starsBackground"></div>
-
+    
+    <section style="display:none;">
+      <h2>ホーム画面に追加できるテトリス風ゲーム</h2>
+      <p>
+        このテトリス風ゲームはPWA対応のブラウザゲームです。
+        スマートフォンでは「ホーム画面に追加」することで、
+        アプリのようにワンタップで起動できます。
+        インストール不要で、オフラインでも遊べる設計になっています。
+      </p>
+    </section>
+    
     <!-- ホーム画面 -->
     <div id="homeScreen" class="home-screen">
         <h1 class="home-title">TETRIS-LIKE</h1>
+
         
         <!-- AI観戦モードトグル -->
         <div class="ai-toggle-container">
