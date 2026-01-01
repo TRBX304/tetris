@@ -1049,11 +1049,11 @@
                 <div class="best-time" id="time20Best">記録: --:--.---</div>
             </div>
             
-            <div class="mode-button" onclick="startGame('time50')">
-                <h2>50ライン</h2>
+            <div class="mode-button" onclick="startGame('time40')">
+                <h2>40ライン</h2>
                 <p>タイムアタック</p>
-                <p>50ライン消去</p>
-                <div class="best-time" id="time50Best">記録: --:--.---</div>
+                <p>40ライン消去</p>
+                <div class="best-time" id="time40Best">記録: --:--.---</div>
             </div>
             
             <div class="mode-button" onclick="startGame('time100')">
@@ -1071,7 +1071,7 @@
                 <button class="ranking-tab" onclick="showRanking('sprint1m', event)">1分間</button>
                 <button class="ranking-tab" onclick="showRanking('time10', event)">10ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time20', event)">20ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time50', event)">50ライン</button>
+                <button class="ranking-tab" onclick="showRanking('time40', event)">40ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time100', event)">100ライン</button>
             </div>
             <div class="ranking-subtabs">
@@ -1315,6 +1315,7 @@
                 this.elapsedTime = 0;
                 this.timerInterval = null;
                 this.timerStarted = false;
+                this.pausedTime = 0;  // 一時停止時の経過時間を保存
                 
                 // ライン消去エフェクト
                 this.lineClearData = null;
@@ -1340,7 +1341,7 @@
                 const targets = {
                     'time10': 10,
                     'time20': 20,
-                    'time50': 50,
+                    'time40': 40,
                     'time100': 100,
                     'sprint1m': Infinity
                 };
@@ -1367,7 +1368,7 @@
                     'sprint1m': '⚡ 1分間スプリント',
                     'time10': '⏱️ 10ライン タイムアタック',
                     'time20': '⏱️ 20ライン タイムアタック',
-                    'time50': '⏱️ 50ライン タイムアタック',
+                    'time40': '⏱️ 40ライン タイムアタック',
                     'time100': '⏱️ 100ライン タイムアタック'
                 };
                 
@@ -1436,7 +1437,8 @@
                     return;
                 }
                 
-                this.startTime = Date.now();
+                // 一時停止から再開する場合はstartTimeを調整
+                this.startTime = Date.now() - this.pausedTime;
                 this.timerStarted = true;
                 
                 this.timerInterval = setInterval(() => {
@@ -1450,6 +1452,34 @@
                         }
                     }
                 }, 10);
+            }
+            
+            pauseTimer() {
+                if (this.timerInterval !== null) {
+                    // 現在の経過時間を保存
+                    this.pausedTime = this.elapsedTime;
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+            
+            resumeTimer() {
+                if (this.timerInterval === null && this.timerStarted) {
+                    // 保存された経過時間からstartTimeを再計算
+                    this.startTime = Date.now() - this.pausedTime;
+                    
+                    this.timerInterval = setInterval(() => {
+                        if (!this.isPaused && !this.isGameOver) {
+                            this.elapsedTime = Date.now() - this.startTime;
+                            this.updateTimeDisplay();
+                            
+                            // 1分間スプリント: 時間切れチェック
+                            if (this.mode === 'sprint1m' && this.elapsedTime >= SPRINT_DURATION_MS) {
+                                this.endSprintMode();
+                            }
+                        }
+                    }, 10);
+                }
             }
             
             stopTimer() {
@@ -2284,10 +2314,12 @@
                 const pauseButton = document.getElementById('pauseButton');
 
                 if (this.isPaused) {
+                    this.pauseTimer();  // タイマーを一時停止
                     pauseOverlay.classList.remove('hidden');
                     pauseButton.textContent = '▶ 再開';
                     pauseOverlay.onclick = () => this.togglePause();
                 } else {
+                    this.resumeTimer();  // タイマーを再開
                     pauseOverlay.classList.add('hidden');
                     pauseButton.textContent = '⏸ 一時停止';
                     pauseOverlay.onclick = null;
@@ -2866,7 +2898,7 @@
                 document.getElementById('sprint1mBest').textContent = `最高: ${records.sprint1m[0].lines} ライン`;
             }
             
-            ['time10', 'time20', 'time50', 'time100'].forEach(mode => {
+            ['time10', 'time20', 'time40', 'time100'].forEach(mode => {
                 if (records[mode] && records[mode].length > 0) {
                     const time = records[mode][0].time;
                     const totalSeconds = time / 1000;
