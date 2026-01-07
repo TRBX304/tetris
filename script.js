@@ -2207,7 +2207,7 @@ class BattleManager {
         });
         
         // AI速度設定（数字が大きいほど遅い＝弱い）
-        const aiSpeeds = { easy: 400, normal: 300, hard: 200, hardest: 100, insane: 50 };
+        const aiSpeeds = { easy: 1000, normal: 500, hard: 200, expert: 100, master: 50, inferno: 10 };
         
         // AI観戦モードの場合、プレイヤー側もAIとして動作
         if (this.aiVsAi) {
@@ -2399,7 +2399,7 @@ function startBattle(difficulty) {
     if (aiGaugePanel) aiGaugePanel.classList.remove('hidden');
     
     // モード表示
-    const diffNames = { easy: 'Easy', normal: 'Normal', hard: 'Hard', hardest: 'Hardest', insane: 'Insane' };
+    const diffNames = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert', master: 'Master', inferno: 'Inferno' };
     const modePrefix = isAIModeEnabled ? '🤖 AI vs AI' : '⚔️ AI対戦';
     document.getElementById('modeInfo').textContent = `${modePrefix} - ${diffNames[difficulty]}`;
     document.getElementById('timeDisplay').textContent = '';
