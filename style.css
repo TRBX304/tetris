@@ -1248,10 +1248,13 @@ button:active {
 .battle-btn.normal:hover { box-shadow: 0 0 20px rgba(255, 255, 0, 0.5); }
 .battle-btn.hard { background: linear-gradient(135deg, #442200, #221100); border-color: #ff8800; color: #ff8800; }
 .battle-btn.hard:hover { box-shadow: 0 0 20px rgba(255, 136, 0, 0.5); }
-.battle-btn.hardest { background: linear-gradient(135deg, #440000, #220000); border-color: #ff0000; color: #ff0000; }
-.battle-btn.hardest:hover { box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
-.battle-btn.insane { background: linear-gradient(135deg, #220022, #110011); border-color: #ff00ff; color: #ff00ff; }
-.battle-btn.insane:hover { box-shadow: 0 0 20px rgba(255, 0, 255, 0.5); }
+.battle-btn.expert { background: linear-gradient(135deg, #440000, #220000); border-color: #ff0000; color: #ff0000; }
+.battle-btn.expert:hover { box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+.battle-btn.master { background: linear-gradient(135deg, #220022, #110011); border-color: #ff00ff; color: #ff00ff; }
+.battle-btn.master:hover { box-shadow: 0 0 20px rgba(255, 0, 255, 0.5); }
+.battle-btn.inferno { background: linear-gradient(135deg, #331100, #110000); border-color: #ff4400; color: #ff4400; animation: infernoGlow 0.5s ease-in-out infinite alternate; }
+.battle-btn.inferno:hover { box-shadow: 0 0 30px rgba(255, 68, 0, 0.8); }
+@keyframes infernoGlow { from { box-shadow: 0 0 10px rgba(255, 68, 0, 0.5); } to { box-shadow: 0 0 20px rgba(255, 68, 0, 0.8); } }
 .battle-dialog-cancel {
     background: transparent; border: 1px solid #666; color: #888;
     padding: 10px 20px; border-radius: 8px; cursor: pointer;
