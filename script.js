@@ -212,8 +212,282 @@ class SoundManager {
     }
 }
 
+// ===========================================
+// BGMマネージャー（コロブチカ）
+// ===========================================
+class BGMManager {
+    constructor() {
+        this.audioContext = null;
+        this.enabled = true;
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.bpm = 180;
+
+        this.timeoutId = null;
+        this.kickLoopTimeoutId = null;
+
+        // ==================
+        // パート設定
+        // ==================
+        
+        // メロディ
+        this.melodyConfig = {
+            waveType: 'square',
+            volume: 0.12
+        };
+        
+        // ベース
+        this.bassConfig = {
+            waveType: 'sawtooth',
+            volume: 0.12 * 0.9
+        };
+        
+        // キック音の設定（共通）
+        this.kickSoundConfig = {
+            waveType: 'triangle',
+            startFreq: 150,     // 開始周波数
+            endFreq: 30,        // 終了周波数
+            freqDecay: 0.08,    // 周波数減衰時間
+            gainDecay: 0.12,    // 音量減衰時間
+            duration: 0.15      // 全体の長さ
+        };
+        
+        // ベース連動キック
+        this.kickConfig = {
+            volume: 0.12 * 2.5
+        };
+        
+        // 四分キック（独立ループ）
+        this.kickLoopConfig = {
+            volume: 0.12 * 1.5,
+            interval: 1  // 1 = 四分音符, 0.5 = 八分音符
+        };
+
+        // ==================
+        // インデックス管理
+        // ==================
+        this.noteIndex = 0;
+        this.bassIndex = 0;
+        this.bassRemainingBeats = 0;
+        this.kickIndex = 0;
+        this.kickRemainingBeats = 0;
+
+        // ==================
+        // 周波数テーブル
+        // ==================
+        this.noteFrequencies = {
+            'C2':65.41,'C#2':69.30,'D2':73.42,'D#2':77.78,'E2':82.41,
+            'F2':87.31,'F#2':92.50,'G2':98.00,'G#2':103.83,'A2':110.00,
+            'A#2':116.54,'B2':123.47,
+            'C3':130.81,'C#3':138.59,'D3':146.83,'D#3':155.56,'E3':164.81,
+            'F3':174.61,'F#3':185.00,'G3':196.00,'G#3':207.65,'A3':220.00,
+            'A#3':233.08,'B3':246.94,
+            'C4':261.63,'C#4':277.18,'D4':293.66,'D#4':311.13,'E4':329.63,
+            'F4':349.23,'F#4':369.99,'G4':392.00,'G#4':415.30,'A4':440.00,
+            'A#4':466.16,'B4':493.88,
+            'C5':523.25,'C#5':554.37,'D5':587.33,'D#5':622.25,'E5':659.25
+        };
+
+        // ==================
+        // メロディデータ
+        // ==================
+        this.melody = [
+            ['E4',1],['B3',0.5],['C4',0.5],['D4',1],['C4',0.5],['B3',0.5],
+            ['A3',1],['A3',0.5],['C4',0.5],['E4',1],['D4',0.5],['C4',0.5],
+            ['B3',1.5],['C4',0.5],['D4',1],['E4',1],['C4',1],['A3',1],['A3',1],['R',1],
+            ['D4',1.5],['F4',0.5],['A4',1],['G4',0.5],['F4',0.5],
+            ['E4',1.5],['C4',0.5],['E4',1],['D4',0.5],['C4',0.5],
+            ['B3',1],['B3',0.5],['C4',0.5],['D4',1],['E4',1],['C4',1],['A3',1],['A3',1],['R',1],
+            ['E4',2],['C4',2],['D4',2],['B3',2],['C4',2],['A3',2],['G#3',2],['B3',1],['R',1],
+            ['E4',2],['C4',2],['D4',2],['B3',2],['C4',1],['E4',1],['A4',2],['G#4',2],['R',2]
+        ];
+
+        // ==================
+        // ベースデータ
+        // ==================
+        this.bassLine = [
+            ['A2',0.5],['E3',0.5],['A3',0.5],['E3',0.5],
+            ['G2',0.5],['D3',0.5],['G3',0.5],['D3',0.5],
+            ['F2',0.5],['C3',0.5],['F3',0.5],['C3',0.5],
+            ['E2',0.5],['B2',0.5],['E3',0.5],['B2',0.5],
+            ['A2',0.5],['E3',0.5],['A3',0.5],['E3',0.5],
+            ['A2',0.5],['E3',0.5],['A3',0.5],['E3',0.5],
+        ];
+
+        // ==================
+        // ベース連動キックデータ
+        // ==================
+        this.kickLine = [
+            ['K', 0.5], ['K', 0.5], ['K', 0.5], ['K', 0.5],
+            ['K', 0.5], ['K', 0.5], ['K', 0.5], ['K', 0.5],
+        ];
+    }
+
+    init() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    beatToSec(b) {
+        return (60 / this.bpm) * b;
+    }
+
+    playOsc(freq, dur, type, vol) {
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.type = type;
+        osc.frequency.value = freq;
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        const now = this.audioContext.currentTime;
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.linearRampToValueAtTime(0.0001, now + dur);
+
+        osc.start(now);
+        osc.stop(now + dur);
+    }
+
+    // キック音（周波数急降下）
+    playKick(vol) {
+        const cfg = this.kickSoundConfig;
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.type = cfg.waveType;
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        const now = this.audioContext.currentTime;
+        osc.frequency.setValueAtTime(cfg.startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(cfg.endFreq, now + cfg.freqDecay);
+
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + cfg.gainDecay);
+
+        osc.start(now);
+        osc.stop(now + cfg.duration);
+    }
+
+    playNext() {
+        if (!this.isPlaying || this.isPaused) return;
+
+        const [note, beats] = this.melody[this.noteIndex];
+        const dur = this.beatToSec(beats);
+
+        // メロディ
+        if (note !== 'R') {
+            this.playOsc(
+                this.noteFrequencies[note],
+                dur * 0.85,
+                this.melodyConfig.waveType,
+                this.melodyConfig.volume
+            );
+        }
+
+        // ベース処理
+        if (this.bassRemainingBeats <= 0) {
+            const [bn, bb] = this.bassLine[this.bassIndex];
+            if (bn !== 'R') {
+                this.playOsc(
+                    this.noteFrequencies[bn],
+                    this.beatToSec(bb),
+                    this.bassConfig.waveType,
+                    this.bassConfig.volume
+                );
+            }
+            this.bassRemainingBeats = bb;
+            this.bassIndex = (this.bassIndex + 1) % this.bassLine.length;
+        }
+
+        // ベース連動キック処理
+        if (this.kickRemainingBeats <= 0) {
+            const [kn, kb] = this.kickLine[this.kickIndex];
+            if (kn === 'K') {
+                this.playKick(this.kickConfig.volume);
+            }
+            this.kickRemainingBeats = kb;
+            this.kickIndex = (this.kickIndex + 1) % this.kickLine.length;
+        }
+
+        this.bassRemainingBeats -= beats;
+        this.kickRemainingBeats -= beats;
+        this.noteIndex = (this.noteIndex + 1) % this.melody.length;
+
+        this.timeoutId = setTimeout(() => this.playNext(), dur * 1000);
+    }
+
+    play() {
+        if (this.isPlaying) return;
+        this.init();
+        this.audioContext.resume();
+
+        this.isPlaying = true;
+        this.isPaused = false;
+        this.noteIndex = 0;
+        this.bassIndex = 0;
+        this.bassRemainingBeats = 0;
+        this.kickIndex = 0;
+        this.kickRemainingBeats = 0;
+
+        this.playNext();
+        this.playKickLoop();
+    }
+
+    // 独立キックループ
+    playKickLoop() {
+        if (!this.isPlaying || this.isPaused) return;
+        
+        this.playKick(this.kickLoopConfig.volume);
+        
+        this.kickLoopTimeoutId = setTimeout(
+            () => this.playKickLoop(),
+            this.beatToSec(this.kickLoopConfig.interval) * 1000
+        );
+    }
+
+    pause() {
+        this.isPaused = true;
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
+        }
+        if (this.kickLoopTimeoutId) {
+            clearTimeout(this.kickLoopTimeoutId);
+            this.kickLoopTimeoutId = null;
+        }
+    }
+
+    resume() {
+        if (!this.isPlaying || !this.isPaused) return;
+        this.isPaused = false;
+        this.playNext();
+        this.playKickLoop();  // キックループも再開
+    }
+
+    stop() {
+        this.isPlaying = false;
+        this.isPaused = false;
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
+        }
+        if (this.kickLoopTimeoutId) {
+            clearTimeout(this.kickLoopTimeoutId);
+            this.kickLoopTimeoutId = null;
+        }
+    }
+}
+
+
 // グローバル効果音マネージャー
 const soundManager = new SoundManager();
+
+// グローバルBGMマネージャー
+const bgmManager = new BGMManager();
 
 // ===========================================
 // ボード設定と座標系
@@ -1202,6 +1476,7 @@ class TetrisGame {
             return;
         }
         
+        bgmManager.stop();  // BGM停止
         soundManager.playGameOver();
         
         // ノーマルモードはゲームオーバーでも記録保存
@@ -1239,6 +1514,7 @@ class TetrisGame {
         }
         this.stopTimer();
         
+        bgmManager.stop();  // BGM停止
         soundManager.playWin();
         
         this.saveRecord();
@@ -1549,11 +1825,13 @@ class TetrisGame {
 
         if (this.isPaused) {
             this.pauseTimer();  // タイマーを一時停止
+            bgmManager.pause();  // BGM一時停止
             pauseOverlay.classList.remove('hidden');
             pauseButton.textContent = '▶ 再開';
             pauseOverlay.onclick = () => this.togglePause();
         } else {
             this.resumeTimer();  // タイマーを再開
+            bgmManager.resume();  // BGM再開
             pauseOverlay.classList.add('hidden');
             pauseButton.textContent = '⏸ 一時停止';
             pauseOverlay.onclick = null;
@@ -1562,6 +1840,7 @@ class TetrisGame {
 
     goHome() {
         this.cleanup();
+        bgmManager.stop();  // BGM停止
         
         document.getElementById('gameScreen').classList.add('hidden');
         document.getElementById('gameOverOverlay').classList.add('hidden');
@@ -1581,6 +1860,10 @@ class TetrisGame {
         document.getElementById('pauseOverlay').classList.add('hidden');
         document.getElementById('actionDisplay').innerHTML = '';
         document.getElementById('timeDisplay').textContent = '';
+        
+        // BGM再開
+        bgmManager.stop();
+        bgmManager.play();
         
         this.init();
         this.updateDisplay();
@@ -2185,8 +2468,11 @@ function startGame(mode) {
     const aiGaugePanel = document.getElementById('aiGaugePanel');
     if (aiGaugePanel) aiGaugePanel.classList.add('hidden');
     
-    // 効果音システム初期化
+    // 効果音・BGM初期化
     soundManager.init();
+    bgmManager.init();
+    bgmManager.stop();
+    bgmManager.play();
     
     document.getElementById('homeScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
@@ -2557,6 +2843,8 @@ class BattleManager {
             cancelAnimationFrame(this.animationFrameId);
         }
         
+        bgmManager.stop();  // BGM停止
+        
         let title, color;
         if (this.playerGame.isGameOver && this.aiGame.isGameOver) {
             title = 'DRAW'; 
@@ -2582,6 +2870,13 @@ class BattleManager {
     togglePause() {
         this.isPaused = !this.isPaused;
         document.getElementById('battlePauseOverlay').classList.toggle('hidden', !this.isPaused);
+        
+        // BGM一時停止/再開
+        if (this.isPaused) {
+            bgmManager.pause();
+        } else {
+            bgmManager.resume();
+        }
     }
     
     cleanup() {
@@ -2606,8 +2901,11 @@ function startBattle(difficulty) {
     
     hideBattleDialog();
     
-    // 効果音システム初期化
+    // 効果音・BGM初期化
     soundManager.init();
+    bgmManager.init();
+    bgmManager.stop();
+    bgmManager.play();
     
     document.getElementById('homeScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
@@ -2655,6 +2953,11 @@ function restartBattle() {
     const aiVsAi = battleManager.aiVsAi;
     battleManager.cleanup();
     document.getElementById('battleResultOverlay').classList.add('hidden');
+    
+    // BGM再開
+    bgmManager.stop();
+    bgmManager.play();
+    
     battleManager = new BattleManager(diff, aiVsAi);
     battleManager.start();
 }
@@ -2664,6 +2967,8 @@ function goHomeFromBattle() {
         battleManager.cleanup();
         battleManager = null;
     }
+    
+    bgmManager.stop();  // BGM停止
     
     const aiPanel = document.getElementById('aiGamePanel');
     if (aiPanel) aiPanel.classList.add('hidden');
