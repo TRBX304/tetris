@@ -19,6 +19,203 @@ const GAME_STATES = {
 };
 
 // ===========================================
+// 効果音システム
+// ===========================================
+class SoundManager {
+    constructor() {
+        this.audioContext = null;
+        this.enabled = true;
+        this.volume = 0.3;
+    }
+    
+    init() {
+        if (this.audioContext) return;
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.log('Web Audio API not supported');
+            this.enabled = false;
+        }
+    }
+    
+    // 音量設定
+    setVolume(vol) {
+        this.volume = Math.max(0, Math.min(1, vol));
+    }
+    
+    // 有効/無効切り替え
+    toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+    }
+    
+    // 基本のビープ音生成
+    playTone(frequency, duration, type = 'square', volumeMod = 1) {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        
+        const vol = this.volume * volumeMod;
+        gainNode.gain.setValueAtTime(vol, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + duration);
+    }
+    
+    // 移動音
+    playMove() {
+        this.playTone(200, 0.05, 'square', 0.3);
+    }
+    
+    // 回転音
+    playRotate() {
+        this.playTone(300, 0.08, 'square', 0.4);
+    }
+    
+    // ハードドロップ音
+    playHardDrop() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(this.volume * 0.6, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.15);
+    }
+    
+    // ライン消し音（ライン数に応じて変化）
+    playLineClear(lineCount) {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const baseFreq = 400 + lineCount * 100;
+        const notes = lineCount === 4 ? [1, 1.25, 1.5, 2] : [1, 1.25, 1.5];
+        
+        notes.forEach((mult, i) => {
+            setTimeout(() => {
+                this.playTone(baseFreq * mult, 0.15, 'square', 0.5);
+            }, i * 80);
+        });
+    }
+    
+    // テトリス音（特別な音）
+    playTetris() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+            setTimeout(() => {
+                this.playTone(freq, 0.2, 'square', 0.5);
+            }, i * 100);
+        });
+    }
+    
+    // Tスピン音
+    playTSpin() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.1);
+        oscillator.frequency.exponentialRampToValueAtTime(900, this.audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(this.volume * 0.4, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.3);
+    }
+    
+    // コンボ音
+    playCombo(comboCount) {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const baseFreq = 300 + Math.min(comboCount, 10) * 50;
+        this.playTone(baseFreq, 0.1, 'sine', 0.5);
+        setTimeout(() => {
+            this.playTone(baseFreq * 1.5, 0.1, 'sine', 0.4);
+        }, 50);
+    }
+    
+    // Back-to-Back音
+    playBackToBack() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        setTimeout(() => this.playTone(600, 0.1, 'sine', 0.4), 0);
+        setTimeout(() => this.playTone(800, 0.1, 'sine', 0.4), 80);
+        setTimeout(() => this.playTone(1000, 0.15, 'sine', 0.5), 160);
+    }
+    
+    // ゲームオーバー音
+    playGameOver() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const notes = [400, 350, 300, 200];
+        notes.forEach((freq, i) => {
+            setTimeout(() => {
+                this.playTone(freq, 0.3, 'sawtooth', 0.4);
+            }, i * 200);
+        });
+    }
+    
+    // 勝利音
+    playWin() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        const notes = [523, 659, 784, 1047, 1047];
+        notes.forEach((freq, i) => {
+            setTimeout(() => {
+                this.playTone(freq, 0.2, 'square', 0.5);
+            }, i * 120);
+        });
+    }
+    
+    // おじゃまライン受信音
+    playGarbageReceive() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        this.playTone(100, 0.15, 'sawtooth', 0.5);
+        setTimeout(() => {
+            this.playTone(80, 0.2, 'sawtooth', 0.4);
+        }, 100);
+    }
+    
+    // 相殺音
+    playCounter() {
+        if (!this.enabled || !this.audioContext) return;
+        
+        this.playTone(500, 0.1, 'square', 0.4);
+        setTimeout(() => this.playTone(700, 0.1, 'square', 0.4), 60);
+    }
+}
+
+// グローバル効果音マネージャー
+const soundManager = new SoundManager();
+
+// ===========================================
 // ボード設定と座標系
 // ===========================================
 // 
@@ -606,6 +803,8 @@ class TetrisGame {
             garbageLine[holeIndex] = null;
             this.board.push(garbageLine);
         }
+        
+        soundManager.playGarbageReceive();
     }
     
     // バトルモード用: おじゃまライン受信
@@ -655,6 +854,7 @@ class TetrisGame {
         if (!this.checkCollision(this.currentPiece, -1, 0)) {
             this.currentPiece.position.x--;
             this.lastMoveWasRotation = false;
+            soundManager.playMove();
         }
     }
 
@@ -668,6 +868,7 @@ class TetrisGame {
         if (!this.checkCollision(this.currentPiece, 1, 0)) {
             this.currentPiece.position.x++;
             this.lastMoveWasRotation = false;
+            soundManager.playMove();
         }
     }
 
@@ -683,6 +884,7 @@ class TetrisGame {
         if (!this.checkCollision(rotated, 0, 0)) {
             this.currentPiece = rotated;
             this.lastMoveWasRotation = true;
+            soundManager.playRotate();
             return;
         }
 
@@ -697,6 +899,7 @@ class TetrisGame {
             if (!this.checkCollision(kicked, 0, 0)) {
                 this.currentPiece = kicked;
                 this.lastMoveWasRotation = true;
+                soundManager.playRotate();
                 return;
             }
         }
@@ -713,6 +916,7 @@ class TetrisGame {
             this.currentPiece.position.y++;
         }
         this.lastMoveWasRotation = false;
+        soundManager.playHardDrop();
         this.lockPiece();
     }
 
@@ -875,6 +1079,7 @@ class TetrisGame {
             if (this.isBackToBack) {
                 btbBonus = 1;
                 actionText = 'BtB ';
+                soundManager.playBackToBack();
             }
             this.isBackToBack = true;
         } else if (data.count > 0) {
@@ -891,6 +1096,7 @@ class TetrisGame {
             
             // Tスピンのおじゃまライン: 2/4/6 + BtBボーナス
             garbageToSend = data.count * 2 + btbBonus;
+            soundManager.playTSpin();
         } else if (data.count === 4) {
             const bonus = 800 * this.level;
             this.score += bonus;
@@ -898,9 +1104,13 @@ class TetrisGame {
             
             // テトリスは4ライン + BtBボーナス
             garbageToSend = 4 + btbBonus;
+            soundManager.playTetris();
         } else if (data.count >= 2) {
             // 2ライン: 1, 3ライン: 2
             garbageToSend = data.count - 1;
+            soundManager.playLineClear(data.count);
+        } else if (data.count === 1) {
+            soundManager.playLineClear(1);
         }
         
         // コンボボーナス（2コンボ目以降）
@@ -913,12 +1123,14 @@ class TetrisGame {
             } else {
                 actionText = `${this.comboCount} REN!`;
             }
+            soundManager.playCombo(this.comboCount);
         }
         
         // バトルモード: 相殺とおじゃまライン送信
         if (this.isBattleMode && garbageToSend > 0) {
             // 相殺（オフセット）処理
             if (this.pendingGarbage > 0) {
+                soundManager.playCounter();
                 if (garbageToSend >= this.pendingGarbage) {
                     // 攻撃力の方が高い：おじゃまを全消去し、余りを相手に送る
                     garbageToSend -= this.pendingGarbage;
@@ -990,6 +1202,8 @@ class TetrisGame {
             return;
         }
         
+        soundManager.playGameOver();
+        
         // ノーマルモードはゲームオーバーでも記録保存
         if (this.mode === 'normal') {
             this.saveRecord();
@@ -1024,6 +1238,8 @@ class TetrisGame {
             this.animationFrameId = null;
         }
         this.stopTimer();
+        
+        soundManager.playWin();
         
         this.saveRecord();
         this.showTimeAttackComplete();
@@ -1969,6 +2185,9 @@ function startGame(mode) {
     const aiGaugePanel = document.getElementById('aiGaugePanel');
     if (aiGaugePanel) aiGaugePanel.classList.add('hidden');
     
+    // 効果音システム初期化
+    soundManager.init();
+    
     document.getElementById('homeScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
     document.getElementById('gameOverOverlay').classList.add('hidden');
@@ -2342,14 +2561,17 @@ class BattleManager {
         if (this.playerGame.isGameOver && this.aiGame.isGameOver) {
             title = 'DRAW'; 
             color = '#ffff00';
+            soundManager.playLineClear(2);
         } else if (this.playerGame.isGameOver) {
             // AI観戦モードの場合は「AI2 WIN!」
             title = this.aiVsAi ? '🤖 AI2 WIN!' : 'AI WIN!'; 
             color = '#ff0000';
+            if (!this.aiVsAi) soundManager.playGameOver();
         } else {
             // AI観戦モードの場合は「AI1 WIN!」
             title = this.aiVsAi ? '🤖 AI1 WIN!' : 'YOU WIN!'; 
             color = '#00ff00';
+            if (!this.aiVsAi) soundManager.playWin();
         }
         
         document.getElementById('battleResultTitle').textContent = title;
@@ -2383,6 +2605,9 @@ function startBattle(difficulty) {
     }
     
     hideBattleDialog();
+    
+    // 効果音システム初期化
+    soundManager.init();
     
     document.getElementById('homeScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
