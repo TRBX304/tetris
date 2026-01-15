@@ -244,7 +244,7 @@ class BGMManager {
         
         // キック音の設定（共通）
         this.kickSoundConfig = {
-            waveType: 'triangle',
+            waveType: 'sine',
             startFreq: 150,     // 開始周波数
             endFreq: 30,        // 終了周波数
             freqDecay: 0.08,    // 周波数減衰時間
@@ -1332,6 +1332,9 @@ class TetrisGame {
 
         this.board = newBoard;
 
+        // 全消し（パーフェクトクリア）判定
+        const isPerfectClear = this.board.every(row => row.every(cell => cell === null));
+
         // コンボカウント増加
         this.comboCount++;
 
@@ -1387,6 +1390,15 @@ class TetrisGame {
             soundManager.playLineClear(1);
         }
         
+        // 全消しボーナス
+        if (isPerfectClear) {
+            const pcBonus = 3000 * this.level;
+            this.score += pcBonus;
+            actionText = 'PERFECT CLEAR!' + (actionText ? ' ' + actionText : '');
+            garbageToSend = 10;  // 全消しは10ライン送る
+            soundManager.playWin();  // 特別な音
+        }
+        
         // コンボボーナス（2コンボ目以降）
         if (this.comboCount >= 2) {
             const comboBonus = (this.comboCount - 1);
@@ -1400,7 +1412,12 @@ class TetrisGame {
             soundManager.playCombo(this.comboCount);
         }
         
+        // ダメージ数字演出用に消去ライン位置を保存
+        const clearedLineY = data.lines.length > 0 ? 
+            Math.min(...data.lines) - BUFFER_HEIGHT : 10;
+        
         // バトルモード: 相殺とおじゃまライン送信
+        let actualDamage = 0;  // 実際に送ったダメージ
         if (this.isBattleMode && garbageToSend > 0) {
             // 相殺（オフセット）処理
             if (this.pendingGarbage > 0) {
@@ -1424,6 +1441,7 @@ class TetrisGame {
             
             // 相殺しきれずに残った攻撃分があれば相手に送る
             if (garbageToSend > 0 && this.onGarbageSend) {
+                actualDamage = garbageToSend;
                 this.onGarbageSend(garbageToSend);
             }
         }
@@ -1431,6 +1449,11 @@ class TetrisGame {
         // アクション表示
         if (actionText) {
             this.showAction(actionText);
+        }
+        
+        // ダメージ数字演出（バトルモードで攻撃が通った時）
+        if (this.isBattleMode && actualDamage > 0) {
+            this.showDamageNumber(actualDamage, clearedLineY);
         }
 
         this.linesCleared += data.count;
@@ -1692,6 +1715,9 @@ class TetrisGame {
                 this.ctx.fillRect(0, (BOARD_HEIGHT - 1 - i) * this.blockSize, 4, this.blockSize);
             }
         }
+        
+        // ダメージ数字演出
+        this.drawDamageNumbers();
     }
 
     drawBlock(x, y, color) {
@@ -1803,6 +1829,59 @@ class TetrisGame {
         setTimeout(() => {
             display.innerHTML = '';
         }, 3000);
+    }
+
+    // ダメージ数字演出（浮かび上がって消える）
+    showDamageNumber(damage, lineY) {
+        // キャンバス上の位置を計算
+        const x = this.canvas.width / 2;
+        const y = lineY * this.blockSize;
+        
+        // ダメージ数字の状態を保存
+        this.damageNumbers = this.damageNumbers || [];
+        this.damageNumbers.push({
+            value: damage,
+            x: x,
+            y: y,
+            opacity: 1,
+            offsetY: 0,
+            startTime: performance.now()
+        });
+    }
+
+    // ダメージ数字を描画（drawメソッドから呼ばれる）
+    drawDamageNumbers() {
+        if (!this.damageNumbers || this.damageNumbers.length === 0) return;
+        
+        const now = performance.now();
+        const duration = 1000;  // 1秒で消える
+        
+        this.damageNumbers = this.damageNumbers.filter(dmg => {
+            const elapsed = now - dmg.startTime;
+            if (elapsed > duration) return false;
+            
+            const progress = elapsed / duration;
+            dmg.opacity = 1 - progress;
+            dmg.offsetY = -50 * progress;  // 上に50px浮かぶ
+            
+            // 描画
+            this.ctx.save();
+            this.ctx.font = `bold ${this.blockSize * 1.5}px Arial`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            
+            // 影
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${dmg.opacity * 0.5})`;
+            this.ctx.fillText(`+${dmg.value}`, dmg.x + 2, dmg.y + dmg.offsetY + 2);
+            
+            // 本体（赤〜オレンジのグラデーション風）
+            this.ctx.fillStyle = `rgba(255, ${100 + dmg.value * 10}, 50, ${dmg.opacity})`;
+            this.ctx.fillText(`+${dmg.value}`, dmg.x, dmg.y + dmg.offsetY);
+            
+            this.ctx.restore();
+            
+            return true;
+        });
     }
 
     updateDisplay() {
