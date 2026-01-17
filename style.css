@@ -365,6 +365,12 @@ input:checked + .toggle-slider:before {
     -webkit-tap-highlight-color: transparent;
 }
 
+.dpad-btn.hold-btn {
+    background: rgba(100, 60, 20, 0.5);
+    border-color: rgba(255, 180, 50, 0.8);
+    font-size: 14px;
+}
+
 .dpad-btn:active {
     background: rgba(80, 80, 80, 0.6);
     transform: scale(0.95);
@@ -1086,6 +1092,11 @@ button:active {
         height: 80px;
     }
 
+    #holdCanvas {
+        width: 80px;
+        height: 60px;
+    }
+
     .score-label {
         font-size: 10px;
         margin-bottom: 2px;
@@ -1173,6 +1184,11 @@ button:active {
     #nextCanvas {
         width: 70px;
         height: 70px;
+    }
+
+    #holdCanvas {
+        width: 70px;
+        height: 50px;
     }
 
     .score-value {
