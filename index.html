@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <meta name="description" content="クラシックなテトリスゲーム、無料で遊べるクラシックなブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
+    <meta name="description" content="AIと対戦できるテトリスゲーム、無料で遊べるクラシックなブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
     <meta name="robots" content="index, follow">
     <!-- OGP -->
     <meta property="og:type" content="website">
@@ -197,7 +197,9 @@
                             <li>↑ : 回転</li>
                             <li>↓ : 高速落下</li>
                             <li>Space : 一気に落下</li>
+                            <li>C : ホールド</li>
                             <li>P : 一時停止</li>
+                            <li>Z : 取り消し（練習モード）</li>
                         </ul>
                     </div>
                     <div class="info-controls-col">
@@ -207,6 +209,10 @@
                             <li>左右スワイプ : 移動</li>
                             <li>上スワイプ : 一気に落下</li>
                             <li>下スワイプ : 高速落下</li>
+                        </ul>
+                        <h4 style="margin-top: 10px;">📱 スマホ（ボタン）</h4>
+                        <ul>
+                            <li>HOLDボタン : ホールド</li>
                         </ul>
                     </div>
                 </div>
@@ -258,6 +264,11 @@
                 <div class="panel-section">
                     <h3>NEXT</h3>
                     <canvas id="nextCanvas" width="120" height="120"></canvas>
+                </div>
+
+                <div class="panel-section">
+                    <h3>HOLD</h3>
+                    <canvas id="holdCanvas" width="120" height="100"></canvas>
                 </div>
 
                 <div class="panel-section score-display">
@@ -329,7 +340,7 @@
                 <!-- 十字キー -->
                 <div class="dpad">
                     <div class="dpad-row">
-                        <div class="dpad-empty"></div>
+                        <button class="dpad-btn hold-btn" id="holdBtn">📦<br><span style="font-size:10px;">HOLD</span></button>
                         <button class="dpad-btn" id="upBtn">🔄<br><span style="font-size:10px;">回転</span></button>
                         <div class="dpad-empty"></div>
                     </div>
