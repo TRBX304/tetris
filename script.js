@@ -565,6 +565,7 @@ class TetrisGame {
         this.isBattleMode = options.isBattle || false;
         this.canvasId = options.canvasId || 'gameCanvas';
         this.nextCanvasId = options.nextCanvasId || 'nextCanvas';
+        this.holdCanvasId = options.holdCanvasId || 'holdCanvas';
         this.blockSize = options.blockSize || this.calculateBlockSize();
         this.onGameOver = options.onGameOver || null;
         this.onGarbageSend = options.onGarbageSend || null;
@@ -577,6 +578,10 @@ class TetrisGame {
 
         this.nextCanvas = document.getElementById(this.nextCanvasId);
         this.nextCtx = this.nextCanvas.getContext('2d');
+        
+        // ホールドキャンバス
+        this.holdCanvas = document.getElementById(this.holdCanvasId);
+        this.holdCtx = this.holdCanvas ? this.holdCanvas.getContext('2d') : null;
 
         // ゲーム状態初期化
         this.initializeGameState();
@@ -635,6 +640,9 @@ class TetrisGame {
         this.pendingGarbage = 0;
         this.comboCount = 0;  // コンボ（REN）カウンター
         this.isBackToBack = false;  // Back-to-Backフラグ
+        
+        // ホールド機能
+        this.holdPieceType = null;
         
         // 練習モード用Undo
         this.undoHistory = [];
@@ -1213,6 +1221,31 @@ class TetrisGame {
             }
             this.lockPiece();
         }
+    }
+
+    // ホールド機能
+    hold() {
+        if (this.isAIMode) return;
+        if (!this.currentPiece || this.isPaused || this.isGameOver || this.gameState !== GAME_STATES.PLAYING) {
+            return;
+        }
+        
+        const currentType = this.currentPiece.type;
+        
+        if (this.holdPieceType === null) {
+            // ホールドが空の場合：現在のピースをホールドして新しいピースを生成
+            this.holdPieceType = currentType;
+            this.spawnNewPiece();
+        } else {
+            // ホールドにピースがある場合：交換
+            const holdType = this.holdPieceType;
+            this.holdPieceType = currentType;
+            this.currentPiece = new Tetromino(holdType);
+        }
+        
+        this.lastMoveWasRotation = false;
+        this.drawHold();
+        soundManager.playRotate();  // ホールド時も回転音を鳴らす
     }
 
     // ===========================================
@@ -1821,6 +1854,52 @@ class TetrisGame {
         }
     }
 
+    drawHold() {
+        if (!this.holdCtx) return;
+        
+        this.holdCtx.fillStyle = '#1e293b';
+        this.holdCtx.fillRect(0, 0, this.holdCanvas.width, this.holdCanvas.height);
+
+        if (!this.holdPieceType) {
+            return;
+        }
+
+        const holdPiece = new Tetromino(this.holdPieceType);
+        const shape = holdPiece.shape;
+        
+        // キャンバスサイズに合わせてブロックサイズを計算
+        const maxBlockWidth = (this.holdCanvas.width - 10) / shape[0].length;
+        const maxBlockHeight = (this.holdCanvas.height - 10) / shape.length;
+        const blockSize = Math.min(maxBlockWidth, maxBlockHeight, 25);
+        
+        const totalWidth = shape[0].length * blockSize;
+        const totalHeight = shape.length * blockSize;
+        const offsetX = (this.holdCanvas.width - totalWidth) / 2;
+        const offsetY = (this.holdCanvas.height - totalHeight) / 2;
+
+        for (let i = 0; i < shape.length; i++) {
+            for (let j = 0; j < shape[i].length; j++) {
+                if (shape[i][j] === 1) {
+                    this.holdCtx.fillStyle = holdPiece.color;
+                    this.holdCtx.fillRect(
+                        offsetX + j * blockSize,
+                        offsetY + i * blockSize,
+                        blockSize,
+                        blockSize
+                    );
+                    this.holdCtx.strokeStyle = '#000';
+                    this.holdCtx.lineWidth = 2;
+                    this.holdCtx.strokeRect(
+                        offsetX + j * blockSize,
+                        offsetY + i * blockSize,
+                        blockSize,
+                        blockSize
+                    );
+                }
+            }
+        }
+    }
+
     showAction(text) {
         this.lastAction = text;
         const display = document.getElementById('actionDisplay');
@@ -1947,6 +2026,7 @@ class TetrisGame {
         this.init();
         this.updateDisplay();
         this.updateModeInfo();
+        this.drawHold();  // ホールドキャンバスをクリア
     }
 
     cleanup() {
@@ -2310,6 +2390,7 @@ function setupGlobalControls() {
                 case 'ArrowDown': e.preventDefault(); pg.moveDown(true); break;
                 case ' ': e.preventDefault(); pg.hardDrop(); break;
                 case 'p': case 'P': e.preventDefault(); battleManager.togglePause(); break;
+                case 'c': case 'C': e.preventDefault(); pg.hold(); break;
             }
             return;
         }
@@ -2353,6 +2434,11 @@ function setupGlobalControls() {
                 if (game.isPracticeMode) {
                     game.undo();
                 }
+                break;
+            case 'c':
+            case 'C':
+                e.preventDefault();
+                game.hold();
                 break;
         }
     });
@@ -2475,7 +2561,8 @@ function setupGlobalControls() {
         { id: 'rightBtn', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.moveRight(); } },
         { id: 'centerBtn', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.moveDown(true); } },
         { id: 'upBtn', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.rotate(); } },
-        { id: 'downBtn2', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.hardDrop(); } }
+        { id: 'downBtn2', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.hardDrop(); } },
+        { id: 'holdBtn', action: () => { const g = getTargetGame(); if (g && !g.isPaused && !g.isGameOver) g.hold(); } }
     ];
 
     gameButtons.forEach(({ id, action }) => {
