@@ -2047,15 +2047,24 @@ class TetrisAI {
         this.game = game;
         
         // 評価関数の重み（チューニング可能）
+        //this.weights = {
+        //    height: -0.5,        // 高さペナルティ
+        //    holes: -3.5,         // 穴ペナルティ（強め）
+        //    bumpiness: -0.2,     // 凹凸ペナルティ
+        //    linesCleared: 3.0,   // ライン消去ボーナス
+        //    wellDepth: 0.1,      // 井戸（テトリス用の溝）ボーナス
+        //    multipleWells: -10.0 // 複数井戸ペナルティ（強め）
+        //};
+
+        // 学習で発見した最適な重み (世代404, Fitness: 199447.6599999905)
         this.weights = {
-            height: -0.5,        // 高さペナルティ
-            holes: -3.5,         // 穴ペナルティ（強め）
-            bumpiness: -0.2,     // 凹凸ペナルティ
-            linesCleared: 3.0,   // ライン消去ボーナス
-            wellDepth: 0.1,      // 井戸（テトリス用の溝）ボーナス
-            multipleWells: -10.0 // 複数井戸ペナルティ（強め）
+            height: -0.032357,
+            holes: -16.102201,
+            bumpiness: -2.000000,
+            linesCleared: 0.000000,
+            wellDepth: -1.000000,
+            multipleWells: -4.997465
         };
-        
         // AI動作用
         this.currentMove = null;
         this.moveQueue = [];
