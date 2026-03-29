@@ -2959,7 +2959,7 @@ async function _renderWorldRanking() {
         const params = new URLSearchParams({
             mode: currentRankingMode,
             period: currentRankingPeriod,
-            limit: 20
+            limit: 100
         });
         const res = await fetch(`${SUPABASE_URL}/functions/v1/get-ranking?${params}`, {
             headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
