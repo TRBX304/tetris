@@ -1,4 +1,42 @@
 // ===========================================
+// Supabase設定
+// ===========================================
+const SUPABASE_URL = 'https://tbyixmuibbvhogirfbxa.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieWl4bXVpYmJ2aG9naXJmYnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NzA5MDgsImV4cCI6MjA5MDM0NjkwOH0.lqgZuq0GcfRewtuXzmZ6ClFIhsFI5ol-WipqRK8fsrU';
+
+async function supabaseFetch(path, options = {}) {
+    const res = await fetch(`${SUPABASE_URL}${path}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            ...(options.headers || {})
+        }
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || res.statusText);
+    }
+    return res.json();
+}
+
+// ===========================================
+// シード付き乱数 (xorshift32)
+// ===========================================
+class SeededRandom {
+    constructor(seed) {
+        this.s = (seed >>> 0) || 1;
+    }
+    next() {
+        this.s ^= this.s << 13;
+        this.s ^= this.s >>> 17;
+        this.s ^= this.s << 5;
+        return (this.s >>> 0) / 0xFFFFFFFF;
+    }
+}
+
+// ===========================================
 // 定数定義
 // ===========================================
 const TETROMINO_TYPES = {
@@ -647,6 +685,13 @@ class TetrisGame {
         // 練習モード用Undo
         this.undoHistory = [];
         this.maxUndoHistory = 20;
+
+        // 世界ランキング用: シード・操作ログ・セッション
+        this.seed = (Date.now() ^ (Math.random() * 0xFFFFFFFF)) >>> 0;
+        this.rng = new SeededRandom(this.seed);
+        this.opLog = [];           // 操作ログバッファ
+        this.sessionToken = null;  // Supabaseセッションtoken
+        this.logFlushTimer = null; // バッファflushタイマー
     }
 
     getTargetLines() {
@@ -732,14 +777,88 @@ class TetrisGame {
             this.lastUpdateTime = performance.now();
             this.startGameLoop();
         }
+
+        // 世界ランキング対象モードのみセッション開始
+        if (!this.isAIMode && !this.isBattleMode && !this.isPracticeMode) {
+            this._startSession();
+            // 2秒ごとに操作ログをflush
+            this.logFlushTimer = setInterval(() => this._flushLog(), 2000);
+        }
+    }
+
+    // ==========================================
+    // 世界ランキング: セッション・ログ管理
+    // ==========================================
+    async _startSession() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/session-start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({ seed: this.seed, mode: this.mode })
+            });
+            const data = await res.json();
+            this.sessionToken = data.session_token;
+        } catch (e) {
+            console.warn('session-start failed (offline?)', e);
+        }
+    }
+
+    _logOp(type, payload = {}) {
+        // AIモード・バトル・練習は記録不要
+        if (this.isAIMode || this.isBattleMode || this.isPracticeMode) return;
+        // sessionTokenがなくてもバッファに溜めておく（後でflush時に送られる）
+        this.opLog.push({ t: type, ts: performance.now() | 0, ...payload });
+    }
+
+    async _flushLog() {
+        if (!this.sessionToken || this.opLog.length === 0) return;
+        const batch = this.opLog.splice(0);
+        try {
+            await fetch(`${SUPABASE_URL}/functions/v1/log-ops`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({ session_token: this.sessionToken, ops: batch })
+            });
+        } catch (e) {
+            // 失敗したらログをキューに戻す（次回再送）
+            this.opLog.unshift(...batch);
+        }
+    }
+
+    async _verifyAndSave(playerName) {
+        // 残りのログをflush
+        await this._flushLog();
+        try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-and-save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    session_token: this.sessionToken,
+                    player_name: playerName
+                })
+            });
+            const data = await res.json();
+            return data; // { ok, score/time, rank }
+        } catch (e) {
+            return { ok: false, error: 'network' };
+        }
     }
 
     fillPieceBag() {
         const types = Object.keys(TETROMINO_TYPES);
         this.pieceBag = [...types];
-        // Fisher-Yatesシャッフル
+        // Fisher-Yatesシャッフル（シード付き乱数を使用）
         for (let i = this.pieceBag.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(this.rng.next() * (i + 1));
             [this.pieceBag[i], this.pieceBag[j]] = [this.pieceBag[j], this.pieceBag[i]];
         }
     }
@@ -1136,6 +1255,7 @@ class TetrisGame {
         if (!this.checkCollision(this.currentPiece, -1, 0)) {
             this.currentPiece.position.x--;
             this.lastMoveWasRotation = false;
+            this._logOp('L');
             soundManager.playMove();
         }
     }
@@ -1150,6 +1270,7 @@ class TetrisGame {
         if (!this.checkCollision(this.currentPiece, 1, 0)) {
             this.currentPiece.position.x++;
             this.lastMoveWasRotation = false;
+            this._logOp('R');
             soundManager.playMove();
         }
     }
@@ -1166,6 +1287,7 @@ class TetrisGame {
         if (!this.checkCollision(rotated, 0, 0)) {
             this.currentPiece = rotated;
             this.lastMoveWasRotation = true;
+            this._logOp('U');
             soundManager.playRotate();
             return;
         }
@@ -1181,6 +1303,7 @@ class TetrisGame {
             if (!this.checkCollision(kicked, 0, 0)) {
                 this.currentPiece = kicked;
                 this.lastMoveWasRotation = true;
+                this._logOp('U');
                 soundManager.playRotate();
                 return;
             }
@@ -1199,6 +1322,7 @@ class TetrisGame {
         }
         this.lastMoveWasRotation = false;
         soundManager.playHardDrop();
+        this._logOp('D');
         this.lockPiece();
     }
 
@@ -1244,6 +1368,7 @@ class TetrisGame {
         }
         
         this.lastMoveWasRotation = false;
+        this._logOp('H');
         this.drawHold();
         soundManager.playRotate();  // ホールド時も回転音を鳴らす
     }
@@ -1491,6 +1616,11 @@ class TetrisGame {
 
         this.linesCleared += data.count;
 
+        // 世界ランキング用: ライン消去ログ（sprint1mのスコア集計に使用）
+        if (data.count > 0) {
+            this._logOp('LINE', { count: data.count });
+        }
+
         // レベルアップ
         const newLevel = Math.floor(this.linesCleared / 10) + 1;
         if (newLevel > this.level) {
@@ -1537,6 +1667,7 @@ class TetrisGame {
         
         // ノーマルモードはゲームオーバーでも記録保存
         if (this.mode === 'normal') {
+            this._logOp('SCORE', { score: this.score }); // 世界ランキング用スコア送信
             this.saveRecord();
         }
         this.showGameOver();
@@ -1556,6 +1687,7 @@ class TetrisGame {
         }
         this.stopTimer();
         
+        this._logOp('LINES', { lines: this.linesCleared }); // 世界ランキング用
         this.saveRecord();
         this.showSprintComplete();
     }
@@ -1573,6 +1705,7 @@ class TetrisGame {
         bgmManager.stop();  // BGM停止
         soundManager.playWin();
         
+        this._logOp('LINES', { lines: this.linesCleared }); // 世界ランキング用
         this.saveRecord();
         this.showTimeAttackComplete();
     }
@@ -1621,6 +1754,7 @@ class TetrisGame {
         title.style.color = '#ff0000';
         
         document.getElementById('finalScore').textContent = this.score.toLocaleString() + ' 点';
+        this._showRankingRegisterButton(false); // normalはゲームオーバーでも登録可
         document.getElementById('gameOverOverlay').classList.remove('hidden');
     }
 
@@ -1630,6 +1764,7 @@ class TetrisGame {
         title.style.color = '#00ff00';
         
         document.getElementById('finalScore').textContent = `${this.linesCleared} ライン`;
+        this._showRankingRegisterButton(true);
         document.getElementById('gameOverOverlay').classList.remove('hidden');
     }
 
@@ -1640,7 +1775,36 @@ class TetrisGame {
         
         const timeStr = this.formatTime(this.elapsedTime);
         document.getElementById('finalScore').textContent = timeStr;
+        this._showRankingRegisterButton(true);
         document.getElementById('gameOverOverlay').classList.remove('hidden');
+    }
+
+    _showRankingRegisterButton(show) {
+        const area = document.getElementById('worldRankingRegisterArea');
+        if (!area) return;
+        // AIモード・バトル・練習は登録不可
+        if (this.isAIMode || this.isBattleMode || this.isPracticeMode || !this.sessionToken) {
+            area.classList.add('hidden');
+            return;
+        }
+        if (show) {
+            area.classList.remove('hidden');
+        } else {
+            // normalのゲームオーバーは登録可（スコアがあれば）
+            if (this.mode === 'normal' && this.score > 0) {
+                area.classList.remove('hidden');
+            } else {
+                area.classList.add('hidden');
+            }
+        }
+        // 登録済みフラグをリセット
+        const btn = document.getElementById('worldRankingRegisterBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🌍 世界ランキングに登録';
+        }
+        const nameInput = document.getElementById('worldRankingName');
+        if (nameInput) nameInput.value = localStorage.getItem('lastPlayerName') || '';
     }
 
     formatTime(milliseconds) {
@@ -2036,6 +2200,11 @@ class TetrisGame {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
+
+        if (this.logFlushTimer !== null) {
+            clearInterval(this.logFlushTimer);
+            this.logFlushTimer = null;
+        }
     }
 }
 
@@ -2055,7 +2224,7 @@ class TetrisAI {
         //    wellDepth: 0.1,      // 井戸（テトリス用の溝）ボーナス
         //    multipleWells: -10.0 // 複数井戸ペナルティ（強め）
         //};
-
+        
         // 学習で発見した最適な重み (世代404, Fitness: 199447.6599999905)
         this.weights = {
             height: -0.032357,
@@ -2694,76 +2863,169 @@ function loadBestRecords() {
 }
 
 // ランキング表示用のグローバル状態
+// ランキング状態
 let currentRankingMode = 'normal';
-let currentRankingType = 'human';  // 'human' or 'ai'
+let currentRankingScope = 'mine';   // 'mine' | 'world'
+let currentRankingPeriod = '30d';   // '30d' | 'all'
+let worldRankingCache = {};         // { key: { data, fetchedAt } }
 
 function showRanking(mode, event) {
     currentRankingMode = mode;
-    
     if (event && event.target) {
-        document.querySelectorAll('.ranking-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
+        document.querySelectorAll('.ranking-tab').forEach(t => t.classList.remove('active'));
         event.target.classList.add('active');
     }
-    
     updateRankingList();
 }
 
-function toggleRankingType(type, event) {
-    currentRankingType = type;
-    
+function switchRankingScope(scope, event) {
+    currentRankingScope = scope;
     if (event && event.target) {
-        document.querySelectorAll('.ranking-subtab').forEach(tab => {
-            tab.classList.remove('active');
-        });
+        document.querySelectorAll('.ranking-scope-tab').forEach(t => t.classList.remove('active'));
         event.target.classList.add('active');
     }
-    
+    // 世界タブのサブフィルターを表示/非表示
+    const worldFilters = document.getElementById('worldRankingFilters');
+    if (worldFilters) {
+        worldFilters.style.display = scope === 'world' ? 'flex' : 'none';
+    }
     updateRankingList();
+}
+
+function switchRankingPeriod(period, event) {
+    currentRankingPeriod = period;
+    if (event && event.target) {
+        document.querySelectorAll('.ranking-period-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    updateRankingList();
+}
+
+
+// 旧API互換（toggleRankingTypeはAIタブ削除で不要になるが念のため残す）
+function toggleRankingType(type, event) {}
+
+function formatRankingValue(record, mode) {
+    if (mode === 'normal') return `${record.score.toLocaleString()} 点`;
+    if (mode === 'sprint1m') return `${record.lines} ライン`;
+    const t = record.time / 1000;
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    const ms = Math.floor((t % 1) * 1000);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
 }
 
 function updateRankingList() {
+    if (currentRankingScope === 'mine') {
+        _renderMineRanking();
+    } else {
+        _renderWorldRanking();
+    }
+}
+
+function _renderMineRanking() {
     const records = JSON.parse(localStorage.getItem('tetrisRecords') || '{}');
     const rankingList = document.getElementById('rankingList');
-    
-    // AIの場合はキーにサフィックスを追加
-    const recordKey = currentRankingType === 'ai' ? `${currentRankingMode}_ai` : currentRankingMode;
-    
-    if (!records[recordKey] || records[recordKey].length === 0) {
-        const typeLabel = currentRankingType === 'ai' ? '🤖 AI' : '👤 人間';
-        rankingList.innerHTML = `<div style="text-align:center; color:#888; padding:20px;">${typeLabel}の記録はまだありません</div>`;
+    const data = records[currentRankingMode];
+
+    if (!data || data.length === 0) {
+        rankingList.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">記録はまだありません</div>';
         return;
     }
-    
-    rankingList.innerHTML = records[recordKey].map((record, index) => {
+
+    rankingList.innerHTML = data.map((record, i) => {
         const date = new Date(record.date);
         const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
-        
-        let displayValue = '';
-        // recordKeyからベースのmodeを取得
-        const baseMode = currentRankingMode;
-        
-        if (baseMode === 'normal') {
-            displayValue = `${record.score.toLocaleString()} 点`;
-        } else if (baseMode === 'sprint1m') {
-            displayValue = `${record.lines} ライン`;
-        } else {
-            const totalSeconds = record.time / 1000;
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = Math.floor(totalSeconds % 60);
-            const ms = Math.floor((totalSeconds % 1) * 1000);
-            displayValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
-        }
-        
         return `
             <div class="ranking-item">
-                <span class="rank">#${index + 1}</span>
-                <span class="time">${displayValue}</span>
+                <span class="rank">#${i + 1}</span>
+                <span class="time">${formatRankingValue(record, currentRankingMode)}</span>
                 <span class="date">${dateStr}</span>
-            </div>
-        `;
+            </div>`;
     }).join('');
+}
+
+async function _renderWorldRanking() {
+    const rankingList = document.getElementById('rankingList');
+    const cacheKey = `${currentRankingMode}_${currentRankingPeriod}`;
+    const cached = worldRankingCache[cacheKey];
+    // 30秒キャッシュ
+    if (cached && Date.now() - cached.fetchedAt < 30000) {
+        _renderWorldRows(cached.data);
+        return;
+    }
+    rankingList.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">読み込み中...</div>';
+    try {
+        const params = new URLSearchParams({
+            mode: currentRankingMode,
+            period: currentRankingPeriod,
+            limit: 20
+        });
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/get-ranking?${params}`, {
+            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        const data = await res.json();
+        worldRankingCache[cacheKey] = { data, fetchedAt: Date.now() };
+        _renderWorldRows(data);
+    } catch (e) {
+        rankingList.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">取得に失敗しました</div>';
+    }
+}
+
+function _renderWorldRows(rows) {
+    const rankingList = document.getElementById('rankingList');
+    if (!rows || rows.length === 0) {
+        rankingList.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">まだ記録がありません</div>';
+        return;
+    }
+    rankingList.innerHTML = rows.map((r, i) => {
+        let val = '';
+        if (currentRankingMode === 'normal') val = `${Number(r.score).toLocaleString()} 点`;
+        else if (currentRankingMode === 'sprint1m') val = `${r.lines} ライン`;
+        else {
+            const t = r.time_ms / 1000;
+            const m = Math.floor(t / 60);
+            const s = Math.floor(t % 60);
+            const ms = Math.floor((t % 1) * 1000);
+            val = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+        }
+        const flag = r.region === 'JP' ? '🇯🇵 ' : '🌍 ';
+        return `
+            <div class="ranking-item">
+                <span class="rank">#${i + 1}</span>
+                <span class="player-name">${flag}${r.player_name || '???'}</span>
+                <span class="time">${val}</span>
+            </div>`;
+    }).join('');
+}
+
+// ゲームクリア後の世界ランキング登録
+async function submitWorldRanking() {
+    if (!game || !game.sessionToken) return;
+    const nameInput = document.getElementById('worldRankingName');
+    const btn = document.getElementById('worldRankingRegisterBtn');
+    const name = (nameInput?.value || '').trim();
+    if (!name) {
+        nameInput?.focus();
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = '送信中...';
+    localStorage.setItem('lastPlayerName', name);
+
+    const result = await game._verifyAndSave(name);
+    if (result.ok) {
+        btn.textContent = '✅ 登録完了！';
+        worldRankingCache = {}; // キャッシュクリア
+        // 世界タブに切り替えて結果を表示
+        const worldTabBtn = document.querySelector('.ranking-scope-tab[data-scope="world"]');
+        if (worldTabBtn) worldTabBtn.click();
+    } else {
+        btn.disabled = false;
+        btn.textContent = result.error === 'verify_failed'
+            ? '❌ 検証失敗（不正なスコア）'
+            : '❌ 登録失敗 - もう一度';
+    }
 }
 
 function createStarField() {
@@ -2839,6 +3101,9 @@ window.startGame = startGame;
 window.toggleControlMode = toggleControlMode;
 window.showRanking = showRanking;
 window.toggleRankingType = toggleRankingType;
+window.switchRankingScope = switchRankingScope;
+window.switchRankingPeriod = switchRankingPeriod;
+window.submitWorldRanking = submitWorldRanking;
 window.loadBestRecords = loadBestRecords;
 window.toggleAIMode = toggleAIMode;
 window.toggleInfoModal = toggleInfoModal;
