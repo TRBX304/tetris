@@ -1368,7 +1368,6 @@ class TetrisGame {
         }
         
         this.lastMoveWasRotation = false;
-        this._logOp('H');
         this.drawHold();
         soundManager.playRotate();  // ホールド時も回転音を鳴らす
     }
@@ -1705,7 +1704,6 @@ class TetrisGame {
         bgmManager.stop();  // BGM停止
         soundManager.playWin();
         
-        this._logOp('LINES', { lines: this.linesCleared }); // 世界ランキング用
         this.saveRecord();
         this.showTimeAttackComplete();
     }
@@ -2974,11 +2972,17 @@ async function _renderWorldRanking() {
 
 function _renderWorldRows(rows) {
     const rankingList = document.getElementById('rankingList');
+    rankingList.innerHTML = '';
+
     if (!rows || rows.length === 0) {
-        rankingList.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">まだ記録がありません</div>';
+        const empty = document.createElement('div');
+        empty.style.cssText = 'text-align:center;color:#888;padding:20px;';
+        empty.textContent = 'まだ記録がありません';
+        rankingList.appendChild(empty);
         return;
     }
-    rankingList.innerHTML = rows.map((r, i) => {
+
+    rows.forEach((r, i) => {
         let val = '';
         if (currentRankingMode === 'normal') val = `${Number(r.score).toLocaleString()} 点`;
         else if (currentRankingMode === 'sprint1m') val = `${r.lines} ライン`;
@@ -2989,14 +2993,28 @@ function _renderWorldRows(rows) {
             const ms = Math.floor((t % 1) * 1000);
             val = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
         }
-        const flag = r.region === 'JP' ? '🇯🇵 ' : '🌍 ';
-        return `
-            <div class="ranking-item">
-                <span class="rank">#${i + 1}</span>
-                <span class="player-name">${flag}${r.player_name || '???'}</span>
-                <span class="time">${val}</span>
-            </div>`;
-    }).join('');
+
+        const item = document.createElement('div');
+        item.className = 'ranking-item';
+
+        const rank = document.createElement('span');
+        rank.className = 'rank';
+        rank.textContent = `#${i + 1}`;
+
+        const name = document.createElement('span');
+        name.className = 'player-name';
+        // textContentを使うことでHTMLタグが文字として表示される（XSS対策）
+        name.textContent = (r.region === 'JP' ? '🇯🇵 ' : '🌍 ') + (r.player_name || '???');
+
+        const time = document.createElement('span');
+        time.className = 'time';
+        time.textContent = val;
+
+        item.appendChild(rank);
+        item.appendChild(name);
+        item.appendChild(time);
+        rankingList.appendChild(item);
+    });
 }
 
 // ゲームクリア後の世界ランキング登録
