@@ -692,6 +692,7 @@ class TetrisGame {
         this.opLog = [];           // 操作ログバッファ
         this.sessionToken = null;  // Supabaseセッションtoken
         this.logFlushTimer = null; // バッファflushタイマー
+        this._logSeq = 0;          // バッチ連番
     }
 
     getTargetLines() {
@@ -816,24 +817,40 @@ class TetrisGame {
     async _flushLog() {
         if (!this.sessionToken || this.opLog.length === 0) return;
         const batch = this.opLog.splice(0);
+        const seq = this._logSeq;
         try {
-            await fetch(`${SUPABASE_URL}/functions/v1/log-ops`, {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/log-ops`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 },
-                body: JSON.stringify({ session_token: this.sessionToken, ops: batch })
+                body: JSON.stringify({ session_token: this.sessionToken, ops: batch, seq })
             });
+            if (res.ok) {
+                this._logSeq++; // 成功したら次のseqに進む
+            } else {
+                this.opLog.unshift(...batch); // 失敗したらキューに戻す
+            }
         } catch (e) {
-            // 失敗したらログをキューに戻す（次回再送）
-            this.opLog.unshift(...batch);
+            this.opLog.unshift(...batch); // 通信エラーもキューに戻す
         }
     }
 
+    // クリア時: 全バッチ送信完了を保証（最大3回リトライ）
+    async _flushAll() {
+        const MAX_RETRIES = 3;
+        for (let i = 0; i < MAX_RETRIES; i++) {
+            await this._flushLog();
+            if (this.opLog.length === 0) return true; // 全部送れた
+            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // 1秒、2秒、3秒待って再試行
+        }
+        return this.opLog.length === 0;
+    }
+
     async _verifyAndSave(playerName) {
-        // 残りのログをflush
-        await this._flushLog();
+        // 全バッチ送信完了を保証してからverifyを呼ぶ
+        await this._flushAll();
         try {
             const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-and-save`, {
                 method: 'POST',
@@ -847,7 +864,7 @@ class TetrisGame {
                 })
             });
             const data = await res.json();
-            return data; // { ok, score/time, rank }
+            return data;
         } catch (e) {
             return { ok: false, error: 'network' };
         }
