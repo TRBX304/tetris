@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <meta name="description" content="AIと対戦できるテトリスゲーム、無料で遊べるクラシックなブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
+    <meta name="description" content="AIと対戦できるテトリス風ゲーム、無料で遊べるクラシックなブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
     <meta name="robots" content="index, follow">
     <!-- OGP -->
     <meta property="og:type" content="website">
@@ -134,6 +134,8 @@
 
         <div class="rankings">
             <h3>🏆 ランキング</h3>
+
+            <!-- モードタブ -->
             <div class="ranking-tabs">
                 <button class="ranking-tab active" onclick="showRanking('normal', event)">ノーマル</button>
                 <button class="ranking-tab" onclick="showRanking('sprint1m', event)">1分間</button>
@@ -142,10 +144,21 @@
                 <button class="ranking-tab" onclick="showRanking('time40', event)">40ライン</button>
                 <button class="ranking-tab" onclick="showRanking('time100', event)">100ライン</button>
             </div>
-            <div class="ranking-subtabs">
-                <button class="ranking-subtab active" onclick="toggleRankingType('human', event)">👤 人間</button>
-                <button class="ranking-subtab" onclick="toggleRankingType('ai', event)">🤖 AI</button>
+
+            <!-- 自分 / 世界 スコープタブ -->
+            <div class="ranking-scope-tabs">
+                <button class="ranking-scope-tab active" data-scope="mine" onclick="switchRankingScope('mine', event)">👤 自分</button>
+                <button class="ranking-scope-tab" data-scope="world" onclick="switchRankingScope('world', event)">🌍 世界</button>
             </div>
+
+            <!-- 世界ランキング用フィルター（初期非表示）-->
+            <div id="worldRankingFilters" style="display:none; flex-wrap:wrap; gap:6px; margin: 6px 0;">
+                <div class="ranking-filter-group">
+                    <button class="ranking-period-tab active" onclick="switchRankingPeriod('30d', event)">過去30日</button>
+                    <button class="ranking-period-tab" onclick="switchRankingPeriod('all', event)">累計</button>
+                </div>
+            </div>
+
             <div class="ranking-list" id="rankingList"></div>
         </div>
     </div>
@@ -363,6 +376,15 @@
         <div class="overlay-content game-over-overlay">
             <div class="overlay-title game-over-title">GAME OVER</div>
             <div class="overlay-score">最終スコア: <span id="finalScore">0</span></div>
+
+            <!-- 世界ランキング登録エリア -->
+            <div id="worldRankingRegisterArea" class="world-ranking-register hidden">
+                <input type="text" id="worldRankingName" class="ranking-name-input"
+                    placeholder="名前を入力" maxlength="16" autocomplete="off">
+                <button id="worldRankingRegisterBtn" class="overlay-button ranking-register-btn"
+                    onclick="submitWorldRanking()">🌍 世界ランキングに登録</button>
+            </div>
+
             <button class="overlay-button" id="homeButton">🏠 ホームに戻る</button>
         </div>
     </div>
@@ -390,6 +412,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.1"></script>
+    <script src="script.js"></script>
 </body>
 </html>
