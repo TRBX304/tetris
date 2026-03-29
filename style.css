@@ -954,9 +954,113 @@ button:active {
     border-color: #00aaff;
 }
 
-.ranking-list {
-    text-align: left;
+/* 自分 / 世界 スコープタブ */
+.ranking-scope-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    justify-content: center;
 }
+
+.ranking-scope-tab {
+    background: rgba(128,128,128,0.2);
+    color: #888;
+    border: 1px solid #444;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+}
+
+.ranking-scope-tab.active {
+    background: linear-gradient(135deg, #00aaff, #0066ff);
+    color: #fff;
+    border-color: #00aaff;
+}
+
+/* 世界ランキング サブフィルター */
+.ranking-filter-group {
+    display: flex;
+    gap: 6px;
+}
+
+.ranking-period-tab,
+.ranking-region-tab {
+    background: rgba(128,128,128,0.2);
+    color: #888;
+    border: 1px solid #444;
+    padding: 5px 12px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.ranking-period-tab.active {
+    background: rgba(0,255,200,0.25);
+    color: #00ffc8;
+    border-color: #00ffc8;
+}
+
+.ranking-region-tab.active {
+    background: rgba(255,180,0,0.2);
+    color: #ffb400;
+    border-color: #ffb400;
+}
+
+/* ゲームオーバー後の世界ランキング登録エリア */
+.world-ranking-register {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.world-ranking-register.hidden { display: none; }
+
+.ranking-name-input {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid #555;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 15px;
+    padding: 8px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    outline: none;
+}
+
+.ranking-name-input:focus { border-color: #00ffff; }
+
+.ranking-register-btn {
+    background: linear-gradient(135deg, #0066ff, #00aaff);
+    border: none;
+    font-size: 14px;
+    padding: 10px 20px;
+    width: 100%;
+}
+
+/* 世界ランキングのプレイヤー名表示 */
+.ranking-item .player-name {
+    flex: 1;
+    font-size: 13px;
+    color: #ccc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0 8px;
+}
+
+
 
 .ranking-item {
     display: flex;
