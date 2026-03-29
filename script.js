@@ -1687,6 +1687,7 @@ class TetrisGame {
         this.stopTimer();
         
         this._logOp('LINES', { lines: this.linesCleared }); // 世界ランキング用
+        this._logOp('TIME', { time_ms: this.elapsedTime }); // クライアントタイマーの値
         this.saveRecord();
         this.showSprintComplete();
     }
@@ -1704,6 +1705,7 @@ class TetrisGame {
         bgmManager.stop();  // BGM停止
         soundManager.playWin();
         
+        this._logOp('TIME', { time_ms: this.elapsedTime }); // クライアントタイマーの値
         this.saveRecord();
         this.showTimeAttackComplete();
     }
