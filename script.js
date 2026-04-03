@@ -693,6 +693,7 @@ class TetrisGame {
         this.sessionToken = null;  // Supabaseセッションtoken
         this.logFlushTimer = null; // バッファflushタイマー
         this._logSeq = 0;          // バッチ連番
+        this._flushing = false;    // flush排他制御フラグ
     }
 
     getTargetLines() {
@@ -815,7 +816,9 @@ class TetrisGame {
     }
 
     async _flushLog() {
+        if (this._flushing) return;
         if (!this.sessionToken || this.opLog.length === 0) return;
+        this._flushing = true;
         const batch = this.opLog.splice(0);
         const seq = this._logSeq;
         try {
@@ -834,6 +837,8 @@ class TetrisGame {
             }
         } catch (e) {
             this.opLog.unshift(...batch); // 通信エラーもキューに戻す
+        } finally {
+            this._flushing = false;
         }
     }
 
