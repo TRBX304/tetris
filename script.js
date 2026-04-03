@@ -859,7 +859,10 @@ class TetrisGame {
 
     async _verifyAndSave(playerName) {
         // 全バッチ送信完了を保証してからverifyを呼ぶ
-        await this._flushAll();
+        const flushed = await this._flushAll();
+        if (!flushed) {
+            return { ok: false, error: 'flush_failed' };
+        }
         try {
             const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-and-save`, {
                 method: 'POST',
@@ -3069,9 +3072,13 @@ async function submitWorldRanking() {
         if (worldTabBtn) worldTabBtn.click();
     } else {
         btn.disabled = false;
-        btn.textContent = result.error === 'verify_failed'
-            ? '❌ 検証失敗（不正なスコア）'
-            : '❌ 登録失敗 - もう一度';
+        if (result.error === 'verify_failed') {
+            btn.textContent = '❌ 検証失敗（不正なスコア）';
+        } else if (result.error === 'flush_failed') {
+            btn.textContent = '❌ 通信エラー - もう一度お試しください';
+        } else {
+            btn.textContent = '❌ 登録失敗 - もう一度';
+        }
     }
 }
 
