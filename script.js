@@ -837,15 +837,24 @@ class TetrisGame {
         }
     }
 
-    // クリア時: 全バッチ送信完了を保証（最大3回リトライ）
+    // クリア時: 全バッチ送信完了を保証
     async _flushAll() {
-        const MAX_RETRIES = 3;
-        for (let i = 0; i < MAX_RETRIES; i++) {
-            await this._flushLog();
+        const MAX_ATTEMPTS = 5;   // 最大試行回数
+        const RETRY_WAIT = 1000;  // 失敗時の待機ms
+
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            // 溜まっているバッファを全部送り切るまでループ
+            while (this.opLog.length > 0) {
+                await this._flushLog();
+                if (this.opLog.length > 0) {
+                    // まだ残っている = 送信失敗 → 待ってリトライ
+                    await new Promise(r => setTimeout(r, RETRY_WAIT));
+                    break; // whileを抜けてattemptループで再試行
+                }
+            }
             if (this.opLog.length === 0) return true; // 全部送れた
-            await new Promise(r => setTimeout(r, 1000 * (i + 1))); // 1秒、2秒、3秒待って再試行
         }
-        return this.opLog.length === 0;
+        return false; // 最大試行回数を超えた
     }
 
     async _verifyAndSave(playerName) {
@@ -1703,6 +1712,7 @@ class TetrisGame {
         }
         this.stopTimer();
         
+        bgmManager.stop();  // BGM停止
         this._logOp('LINES', { lines: this.linesCleared }); // 世界ランキング用
         this._logOp('TIME', { time_ms: this.elapsedTime }); // クライアントタイマーの値
         this.saveRecord();
