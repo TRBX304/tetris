@@ -2,11 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#000000">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0e17">
     <meta name="description" content="AIと対戦できるテトリス風ゲーム、世界ランキングでタイムアタックもできるブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる、ホーム画面に追加可能なPWA対応">
     <meta name="robots" content="index, follow">
-    <!-- OGP -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="TETRIS-LIKE | AIと対戦できるブラウザ版テトリス風ゲーム">
     <meta property="og:description" content="世界ランキングに挑戦できるブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる落ちものパズル">
@@ -14,8 +13,6 @@
     <meta property="og:url" content="https://tetris-like.pages.dev/">
     <meta property="og:site_name" content="TETRIS-LIKE">
     <meta property="og:locale" content="ja_JP">
-    
-    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="TETRIS-LIKE | AIと対戦できるブラウザ版テトリス風ゲーム">
     <meta name="twitter:description" content="世界ランキングに挑戦できるブラウザ版テトリス。スマホ・PC対応、AI観戦モード搭載。インストール不要ですぐ遊べる">
@@ -23,394 +20,300 @@
     <link rel="icon" href="/icon-192.png">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Noto+Sans+JP:wght@500;700&display=swap" rel="stylesheet">
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0b45464586344910a274a959d7a31fde"}'></script><!-- End Cloudflare Web Analytics -->
     <title>TETRIS-LIKE | AIと対戦できるブラウザ版テトリス風ゲーム</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 星座風背景 -->
-    <div class="stars-background" id="starsBackground"></div>
-    
-    <section style="display:none;">
-      <h2>ホーム画面に追加できるテトリス風ゲーム</h2>
-      <p>
-        このテトリス風ゲームはPWA対応のブラウザゲームです。
-        スマートフォンでは「ホーム画面に追加」することで、
-        アプリのようにワンタップで起動できます。
-        インストール不要で、オフラインでも遊べる設計になっています。
-      </p>
+    <div class="stars-background" id="starsBackground" aria-hidden="true"></div>
+
+    <section class="visually-hidden">
+        <h2>ホーム画面に追加できるテトリス風ゲーム</h2>
+        <p>このテトリス風ゲームはPWA対応のブラウザゲームです。スマートフォンでは「ホーム画面に追加」することで、アプリのようにワンタップで起動できます。インストール不要で、オフラインでも遊べる設計になっています。</p>
     </section>
-    
-    <!-- ホーム画面 -->
-    <div id="homeScreen" class="home-screen">
-        <div class="home-title-container">
-            <h1 class="home-title">TETRIS-LIKE</h1>
-            <button class="info-button" onclick="toggleInfoModal()">ⓘ</button>
-        </div>
 
-        
-        <!-- AI観戦モードトグル -->
-        <div class="ai-toggle-container">
-            <label class="ai-toggle-label">
-                <input type="checkbox" id="aiModeToggle" onchange="toggleAIMode()">
-                <span class="ai-toggle-slider"></span>
+    <!-- ================= ホーム ================= -->
+    <main id="homeScreen" class="screen home">
+        <header class="home-header">
+            <h1 class="logo"><span class="logo-blocks" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span data-app-name>TETRIS-LIKE</span></h1>
+            <div class="header-actions">
+                <button class="icon-btn" data-open="settingsModal" aria-label="設定">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+                </button>
+                <button class="icon-btn" data-open="infoModal" aria-label="遊び方">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 前回遊んだモード -->
+        <section class="hero card">
+            <div class="hero-text">
+                <div class="hero-label" id="heroMode">ノーマル</div>
+                <div class="hero-value num" id="heroBest">—</div>
+                <div class="hero-sub">自己ベスト</div>
+            </div>
+            <button class="btn btn-primary btn-lg" id="heroPlay">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor" stroke="none"/></svg>
+                プレイ
+            </button>
+        </section>
+
+        <section class="modes">
+            <h2 class="section-title">モード</h2>
+            <div class="mode-grid">
+                <button class="mode-card" data-mode="normal"><span class="mode-name">ノーマル</span><span class="mode-desc">エンドレスでスコア</span><span class="mode-best num" data-best="normal">—</span></button>
+                <button class="mode-card" data-mode="sprint1m"><span class="mode-name">1分間スプリント</span><span class="mode-desc">60秒で何ライン？</span><span class="mode-best num" data-best="sprint1m">—</span></button>
+                <button class="mode-card" data-mode="time10"><span class="mode-name">10ライン</span><span class="mode-desc">タイムアタック</span><span class="mode-best num" data-best="time10">—</span></button>
+                <button class="mode-card" data-mode="time20"><span class="mode-name">20ライン</span><span class="mode-desc">タイムアタック</span><span class="mode-best num" data-best="time20">—</span></button>
+                <button class="mode-card" data-mode="time40"><span class="mode-name">40ライン</span><span class="mode-desc">タイムアタック</span><span class="mode-best num" data-best="time40">—</span></button>
+                <button class="mode-card" data-mode="time100"><span class="mode-name">100ライン</span><span class="mode-desc">タイムアタック</span><span class="mode-best num" data-best="time100">—</span></button>
+                <button class="mode-card mode-practice" data-mode="practice"><span class="mode-name">練習</span><span class="mode-desc">落下なし・戻せる</span><span class="mode-best">配置の練習に</span></button>
+                <button class="mode-card mode-battle" data-open="battleModal"><span class="mode-name">AI対戦</span><span class="mode-desc">おじゃまを送り合う</span><span class="mode-best">6段階</span></button>
+            </div>
+            <label class="switch-row card">
+                <span class="switch-text"><span>AI観戦モード</span><small id="aiModeDesc">OFF：自分でプレイ</small></span>
+                <input type="checkbox" class="switch" id="aiModeToggle">
             </label>
-            <span class="ai-toggle-text">🤖 AI観戦モード</span>
-            <span class="ai-toggle-desc" id="aiModeDesc">OFF - 自分でプレイ</span>
-        </div>
-        
-        <div class="mode-selection">
-            <div class="mode-button" onclick="startGame('normal')">
-                <h2>ノーマル</h2>
-                <p>エンドレスモード</p>
-                <p>スコアアタック</p>
-                <div class="best-time" id="normalBest">最高: - 点</div>
-            </div>
-            
-            <div class="mode-button" onclick="startGame('sprint1m')">
-                <h2>1分間スプリント</h2>
-                <p>60秒チャレンジ</p>
-                <p>ライン数を競う</p>
-                <div class="best-time" id="sprint1mBest">最高: - ライン</div>
-            </div>
-            
-            <div class="mode-button" onclick="startGame('time10')">
-                <h2>10ライン</h2>
-                <p>タイムアタック</p>
-                <p>10ライン消去</p>
-                <div class="best-time" id="time10Best">記録: --:--.---</div>
-            </div>
-            
-            <div class="mode-button" onclick="startGame('time20')">
-                <h2>20ライン</h2>
-                <p>タイムアタック</p>
-                <p>20ライン消去</p>
-                <div class="best-time" id="time20Best">記録: --:--.---</div>
-            </div>
-            
-            <div class="mode-button" onclick="startGame('time40')">
-                <h2>40ライン</h2>
-                <p>タイムアタック</p>
-                <p>40ライン消去</p>
-                <div class="best-time" id="time40Best">記録: --:--.---</div>
-            </div>
-            
-            <div class="mode-button" onclick="startGame('time100')">
-                <h2>100ライン</h2>
-                <p>タイムアタック</p>
-                <p>100ライン消去</p>
-                <div class="best-time" id="time100Best">記録: --:--.---</div>
-            </div>
-            
-            <div class="mode-button practice-mode" onclick="startGame('practice')">
-                <h2>📝 練習モード</h2>
-                <p>落下なし / Z: Undo</p>
-                <div class="best-time">配置の練習に</div>
-            </div>
-            
-            <div class="mode-button battle-mode" onclick="showBattleDialog()">
-                <h2>⚔️ AI対戦</h2>
-                <p>おじゃまライン送り合い</p>
-                <div class="best-time">難易度選択あり</div>
-            </div>
-        </div>
-        
-        <!-- AI対戦難易度選択ダイアログ -->
-        <div id="battleDialog" class="battle-dialog hidden">
-            <div class="battle-dialog-content">
-                <h3>⚔️ AI対戦 - 難易度選択</h3>
-                <p>2ライン以上消すとおじゃまラインを送れる！</p>
-                <div class="battle-dialog-buttons">
-                    <button class="battle-btn easy" onclick="startBattle('easy')">🟢 Easy</button>
-                    <button class="battle-btn normal" onclick="startBattle('normal')">🟡 Normal</button>
-                    <button class="battle-btn hard" onclick="startBattle('hard')">🟠 Hard</button>
-                    <button class="battle-btn expert" onclick="startBattle('expert')">🔴 Expert</button>
-                    <button class="battle-btn master" onclick="startBattle('master')">💀 Master</button>
-                    <button class="battle-btn inferno" onclick="startBattle('inferno')">🔥 Inferno</button>
-                </div>
-                <button class="battle-dialog-cancel" onclick="hideBattleDialog()">キャンセル</button>
-            </div>
-        </div>
+        </section>
 
-        <div class="rankings">
-            <h3>🏆 ランキング</h3>
-
-            <!-- モードタブ -->
-            <div class="ranking-tabs">
-                <button class="ranking-tab active" onclick="showRanking('normal', event)">ノーマル</button>
-                <button class="ranking-tab" onclick="showRanking('sprint1m', event)">1分間</button>
-                <button class="ranking-tab" onclick="showRanking('time10', event)">10ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time20', event)">20ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time40', event)">40ライン</button>
-                <button class="ranking-tab" onclick="showRanking('time100', event)">100ライン</button>
-            </div>
-
-            <!-- 自分 / 世界 スコープタブ -->
-            <div class="ranking-scope-tabs">
-                <button class="ranking-scope-tab active" data-scope="mine" onclick="switchRankingScope('mine', event)">👤 自分</button>
-                <button class="ranking-scope-tab" data-scope="world" onclick="switchRankingScope('world', event)">🌍 世界</button>
-            </div>
-
-            <!-- 世界ランキング用フィルター（初期非表示）-->
-            <div id="worldRankingFilters" style="display:none; flex-wrap:wrap; gap:6px; margin: 6px 0;">
-                <div class="ranking-filter-group">
-                    <button class="ranking-period-tab active" onclick="switchRankingPeriod('30d', event)">過去30日</button>
-                    <button class="ranking-period-tab" onclick="switchRankingPeriod('all', event)">累計</button>
+        <section class="rankings card">
+            <div class="rank-head">
+                <h2 class="section-title">ランキング</h2>
+                <div class="seg" id="scopeSeg" role="tablist">
+                    <button class="active" data-scope="mine" role="tab">自分</button>
+                    <button data-scope="world" role="tab">世界</button>
                 </div>
             </div>
-
-            <div class="ranking-list" id="rankingList"></div>
-        </div>
-    </div>
-
-    <!-- Infoモーダル -->
-    <div id="infoModal" class="info-modal hidden">
-        <div class="info-modal-content">
-            <button class="info-modal-close" onclick="toggleInfoModal()">✕</button>
-            <h2 class="info-modal-title">📖 Information</h2>
-
-            <div class="info-section">
-                <h3>🎮 ゲームモード</h3>
-                <ul>
-                    <li><strong>ノーマル</strong>: エンドレスモード。ゲームオーバーまでスコアを稼ごう</li>
-                    <li><strong>1分間スプリント</strong>: 60秒間でできるだけ多くのラインを消そう</li>
-                    <li><strong>タイムアタック</strong>: 目標ライン数をどれだけ早く消せるか競おう（10/20/40/100ライン）</li>
-                </ul>
+            <div class="chips" id="rankModeChips">
+                <button class="chip active" data-mode="normal">ノーマル</button>
+                <button class="chip" data-mode="sprint1m">1分間</button>
+                <button class="chip" data-mode="time10">10L</button>
+                <button class="chip" data-mode="time20">20L</button>
+                <button class="chip" data-mode="time40">40L</button>
+                <button class="chip" data-mode="time100">100L</button>
             </div>
-
-            <div class="info-section">
-                <h3>📝 練習モード</h3>
-                <p>
-                    ミノが自動で落下しない練習専用モード。<br>
-                    じっくり考えて配置の練習ができます。<br>
-                    <strong>Z キー</strong>または<strong>取り消しボタン</strong>で直前の操作を戻せます。
-                </p>
+            <div class="seg seg-sm hidden" id="periodSeg">
+                <button class="active" data-period="30d">過去30日</button>
+                <button data-period="all">累計</button>
             </div>
+            <ol class="rank-list" id="rankingList"></ol>
+        </section>
 
-            <div class="info-section">
-                <h3>⚔️ AI対戦モード</h3>
-                <p>
-                    AIと1対1で対戦！<br>
-                    2ライン以上同時に消すと、相手におじゃまラインを送れます。<br>
-                    難易度は6段階（Easy / Normal / Hard / Expert / Master / Inferno）。<br>
-                    スマホでは相手の状況が影で表示されます。
-                </p>
-                <p style="margin-top: 8px; color: #888; font-size: 13px;">
-                    ※ AI観戦モードをONにすると、AI同士の対戦を観戦できます
-                </p>
-            </div>
+        <footer class="credit">@NaK0528</footer>
+    </main>
 
-            <div class="info-section">
-                <h3>🕹️ 操作方法</h3>
-                <div class="info-controls-grid">
-                    <div class="info-controls-col">
-                        <h4>💻 PC（キーボード）</h4>
-                        <ul>
-                            <li>← → : 左右移動</li>
-                            <li>↑ : 回転</li>
-                            <li>↓ : 高速落下</li>
-                            <li>Space : 一気に落下</li>
-                            <li>C : ホールド</li>
-                            <li>P : 一時停止</li>
-                            <li>Z : 取り消し（練習モード）</li>
-                        </ul>
-                    </div>
-                    <div class="info-controls-col">
-                        <h4>📱 スマホ（スワイプ）</h4>
-                        <ul>
-                            <li>タップ : 回転</li>
-                            <li>左右スワイプ : 移動</li>
-                            <li>上スワイプ : 一気に落下</li>
-                            <li>下スワイプ : 高速落下</li>
-                        </ul>
-                        <h4 style="margin-top: 10px;">📱 スマホ（ボタン）</h4>
-                        <ul>
-                            <li>HOLDボタン : ホールド</li>
-                        </ul>
-                    </div>
-                </div>
-                <p style="margin-top: 10px; color: #888; font-size: 13px;">
-                    ※ スマホではボタン操作モードも選択できます
-                </p>
-            </div>
-
-            <div class="info-section">
-                <h3>🤖 AI観戦モード</h3>
-                <p>
-                    AIが自動でテトリスをプレイします。<br>
-                    どんな戦略で積み上げるか観察してみよう！
-                </p>
-            </div>
-
-            <div class="info-section">
-                <h3>📱 PWA（ホーム画面に追加）</h3>
-                <p>
-                    このゲームはPWA対応です。<br>
-                    スマホのブラウザメニューから「ホーム画面に追加」すると、<br>
-                    アプリのようにワンタップで起動できます。<br>
-                    インストール不要で、オフラインでも遊べます。
-                </p>
-            </div>
-
-            <hr class="info-divider">
-
-            <div class="info-contact">
-                <p>お問い合わせ・フィードバック</p>
-                <p style="margin-top: 5px; color: #666;">@NaK0528</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ゲーム画面 -->
-    <div class="game-container hidden" id="gameScreen">
-        <h1>TETRIS-LIKE</h1>
-        
-        <div class="mode-info" id="modeInfo"></div>
-        <div class="time-display" id="timeDisplay"></div>
-        <div class="action-display" id="actionDisplay"></div>
+    <!-- ================= ゲーム画面 ================= -->
+    <div id="gameScreen" class="screen game hidden">
+        <header class="game-bar">
+            <div class="bar-mode" id="modeInfo"></div>
+            <div class="bar-time num" id="timeDisplay"></div>
+            <button class="icon-btn" id="pauseButton" aria-label="一時停止">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg>
+            </button>
+        </header>
 
         <div class="game-area">
-            <canvas id="gameCanvas"></canvas>
+            <aside class="side side-left">
+                <div class="panel">
+                    <div class="panel-label">HOLD</div>
+                    <canvas id="holdCanvas" class="hold-canvas" width="80" height="52"></canvas>
+                </div>
+                <div class="stats">
+                    <div class="stat" id="scoreStat"><span class="stat-label">スコア</span><span class="stat-value num" id="scoreDisplay">0</span></div>
+                    <div class="stat" id="levelStat"><span class="stat-label">レベル</span><span class="stat-value num" id="levelDisplay">1</span></div>
+                    <div class="stat"><span class="stat-label">ライン</span><span class="stat-value num" id="linesDisplay">0</span></div>
+                    <div class="stat hidden" id="remainStat"><span class="stat-label">のこり</span><span class="stat-value num" id="remainDisplay">0</span></div>
+                </div>
+                <button class="btn btn-ghost btn-sm hidden" id="undoButton" data-action="undo">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>戻す
+                </button>
+            </aside>
 
-            <div class="side-panel">
-                <div class="panel-section">
-                    <h3>NEXT</h3>
-                    <canvas id="nextCanvas" width="120" height="120"></canvas>
-                </div>
-
-                <div class="panel-section">
-                    <h3>HOLD</h3>
-                    <canvas id="holdCanvas" width="120" height="100"></canvas>
-                </div>
-
-                <div class="panel-section score-display">
-                    <div class="score-label">スコア</div>
-                    <div class="score-value" id="scoreDisplay">0</div>
-                </div>
-
-                <div class="panel-section score-display">
-                    <div class="score-label">レベル</div>
-                    <div class="score-value level-value" id="levelDisplay">1</div>
-                </div>
-
-                <div class="panel-section score-display">
-                    <div class="score-label">ライン</div>
-                    <div class="score-value level-value" id="linesDisplay">0</div>
-                </div>
-
-                <div class="panel-section" id="controlTogglePanel">
-                    <h3>操作方法</h3>
-                    <div class="toggle-container">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="controlToggle" onchange="toggleControlMode()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="toggle-text">ボタン</span>
-                    </div>
-                    <div class="swipe-instructions" id="swipeInstructions">
-                        <div class="swipe-title">スワイプ操作</div>
-                        <div>タップ: 回転</div>
-                        <div>← →: 移動</div>
-                        <div>↑: 一気に落下</div>
-                        <div>↓: 高速落下</div>
-                    </div>
-                </div>
-
-                <div class="button-group">
-                    <button class="undo-button hidden" id="undoButton">↩️ 取り消し (Z)</button>
-                    <button class="pause-button" id="pauseButton">⏸ 一時停止</button>
-                    <button class="reset-button" id="restartButton" style="display:none;">🔄 リスタート</button>
-                    <button class="reset-button" id="resetButton">🏠 ホーム</button>
-                </div>
-                
-                <!-- AI対戦用: モバイルAIゲージ -->
-                <div class="ai-gauge-panel hidden" id="aiGaugePanel">
-                    <div class="ai-gauge-header">🤖 AI</div>
-                    <div class="ai-gauge-container">
-                        <div class="ai-gauge-bar" id="aiGaugeBar"></div>
-                    </div>
-                    <div class="ai-gauge-lines">L:<span id="aiGaugeLines">0</span></div>
-                </div>
+            <div class="board-wrap" id="boardWrap">
+                <canvas id="gameCanvas"></canvas>
+                <div class="board-popup" id="boardPopup" aria-live="polite"></div>
             </div>
-            
-            <!-- AI対戦用: AI盤面パネル -->
-            <div class="ai-game-panel hidden" id="aiGamePanel">
-                <div class="ai-panel-header">🤖 AI</div>
+
+            <aside class="side side-right">
+                <div class="panel">
+                    <div class="panel-label">NEXT</div>
+                    <canvas id="nextCanvas" class="next-canvas" width="80" height="170"></canvas>
+                </div>
+                <div class="ai-gauge-panel hidden" id="aiGaugePanel">
+                    <div class="panel-label">AI</div>
+                    <div class="ai-gauge"><div class="ai-gauge-bar" id="aiGaugeBar"></div></div>
+                    <div class="ai-gauge-lines num"><span id="aiGaugeLines">0</span>L</div>
+                </div>
+            </aside>
+
+            <div class="ai-panel card hidden" id="aiGamePanel">
+                <div class="panel-label">AI</div>
                 <canvas id="aiCanvas"></canvas>
-                <canvas id="aiNextCanvas" width="80" height="80"></canvas>
-                <div class="ai-panel-stats">
-                    <div>Score: <span id="aiScoreDisplay">0</span></div>
-                    <div>Lv: <span id="aiLevelDisplay">1</span></div>
-                    <div>Lines: <span id="aiLinesDisplay">0</span></div>
+                <div class="ai-panel-bottom">
+                    <canvas id="aiNextCanvas" width="56" height="100"></canvas>
+                    <div class="ai-panel-stats">
+                        <div><span>スコア</span><b class="num" id="aiScoreDisplay">0</b></div>
+                        <div><span>ライン</span><b class="num" id="aiLinesDisplay">0</b></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ボタン操作パネル -->
-        <div id="buttonControls" class="button-controls hidden">
-            <div class="dpad-container">
-                <!-- 十字キー -->
-                <div class="dpad">
-                    <div class="dpad-row">
-                        <button class="dpad-btn hold-btn" id="holdBtn">📦<br><span style="font-size:10px;">HOLD</span></button>
-                        <button class="dpad-btn" id="upBtn">🔄<br><span style="font-size:10px;">回転</span></button>
-                        <div class="dpad-empty"></div>
-                    </div>
-                    <div class="dpad-row">
-                        <button class="dpad-btn" id="leftBtn">◀</button>
-                        <button class="dpad-center-btn" id="centerBtn">⬇️</button>
-                        <button class="dpad-btn" id="rightBtn">▶</button>
-                    </div>
-                    <div class="dpad-row">
-                        <div class="dpad-empty"></div>
-                        <button class="dpad-btn" id="downBtn2">⬇️<br><span style="font-size:10px;">落下</span></button>
-                        <div class="dpad-empty"></div>
-                    </div>
-                </div>
+        <!-- ゲームボーイ風ボタン（スマホ） -->
+        <div class="pad hidden" id="buttonControls">
+            <div class="dpad">
+                <button class="dpad-btn up" data-action="hard" aria-label="ハードドロップ"><span>▲</span></button>
+                <button class="dpad-btn left" data-action="left" aria-label="左"><span>◀</span></button>
+                <div class="dpad-center"></div>
+                <button class="dpad-btn right" data-action="right" aria-label="右"><span>▶</span></button>
+                <button class="dpad-btn down" data-action="soft" aria-label="ソフトドロップ"><span>▼</span></button>
             </div>
+            <div class="pad-mid">
+                <button class="pill-btn" data-action="hold">HOLD</button>
+            </div>
+            <div class="ab">
+                <button class="ab-btn b" data-action="ccw" aria-label="左回転"><span>B</span><small>⟲</small></button>
+                <button class="ab-btn a" data-action="cw" aria-label="右回転"><span>A</span><small>⟳</small></button>
+            </div>
+        </div>
+        <!-- スワイプ操作時の下部バー -->
+        <div class="swipe-bar hidden" id="swipeBar">
+            <button class="pill-btn" data-action="hold">HOLD</button>
+            <span class="swipe-hint">タップで回転（左半分⟲ 右半分⟳）・スワイプで移動/落下</span>
         </div>
     </div>
 
-    <div id="gameOverOverlay" class="overlay hidden">
-        <div class="overlay-content game-over-overlay">
-            <div class="overlay-title game-over-title">GAME OVER</div>
-            <div class="overlay-score">最終スコア: <span id="finalScore">0</span></div>
+    <!-- ================= オーバーレイ ================= -->
+    <div id="resultOverlay" class="overlay hidden">
+        <div class="sheet">
+            <div class="sheet-title" id="resultTitle">GAME OVER</div>
+            <div class="result-mode" id="resultMode"></div>
+            <div class="result-value num" id="resultValue">0</div>
+            <div class="result-best" id="resultBest"></div>
 
-            <!-- 世界ランキング登録エリア -->
-            <div id="worldRankingRegisterArea" class="world-ranking-register hidden">
-                <input type="text" id="worldRankingName" class="ranking-name-input"
-                    placeholder="名前を入力" maxlength="16" autocomplete="off">
-                <button id="worldRankingRegisterBtn" class="overlay-button ranking-register-btn"
-                    onclick="submitWorldRanking()">🌍 世界ランキングに登録</button>
+            <div id="registerArea" class="register hidden">
+                <input type="text" id="playerName" class="input" placeholder="名前" maxlength="16" autocomplete="off">
+                <button id="registerBtn" class="btn btn-accent">世界ランキングに登録</button>
+                <div class="register-msg" id="registerMsg"></div>
             </div>
 
-            <button class="overlay-button" id="homeButton">🏠 ホームに戻る</button>
+            <div class="sheet-actions">
+                <button class="btn btn-primary" id="retryButton">もう一度</button>
+                <button class="btn btn-ghost" id="homeButton">ホーム</button>
+            </div>
         </div>
     </div>
 
     <div id="pauseOverlay" class="overlay hidden">
-        <div class="overlay-content pause-overlay">
-            <div class="overlay-title pause-title">一時停止</div>
-            <div class="overlay-score">タップまたはクリックで再開</div>
-            <button class="overlay-button" onclick="game.togglePause()">▶ 再開</button>
+        <div class="sheet">
+            <div class="sheet-title">一時停止</div>
+            <div class="sheet-actions vertical">
+                <button class="btn btn-primary" id="resumeButton">再開</button>
+                <button class="btn btn-ghost" id="restartButton">やり直す</button>
+                <button class="btn btn-ghost" data-open="settingsModal">設定</button>
+                <button class="btn btn-ghost" id="pauseHomeButton">ホームに戻る</button>
+            </div>
         </div>
     </div>
 
-    <div id="battleResultOverlay" class="overlay hidden">
-        <div class="overlay-content">
-            <div class="overlay-title" id="battleResultTitle">RESULT</div>
-            <button class="overlay-button" onclick="restartBattle()">🔄 もう一度</button>
-            <button class="overlay-button" onclick="goHomeFromBattle()">🏠 ホーム</button>
+    <div id="battleModal" class="overlay modal hidden">
+        <div class="sheet">
+            <button class="sheet-close icon-btn" data-close aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            <div class="sheet-title">AI対戦</div>
+            <p class="sheet-desc">2ライン以上まとめて消すと、相手におじゃまラインを送れます。</p>
+            <div class="difficulty-list">
+                <button class="diff-btn" data-difficulty="easy"><i style="--c:#4ee07a"></i>Easy</button>
+                <button class="diff-btn" data-difficulty="normal"><i style="--c:#ffd23f"></i>Normal</button>
+                <button class="diff-btn" data-difficulty="hard"><i style="--c:#ff9a3c"></i>Hard</button>
+                <button class="diff-btn" data-difficulty="expert"><i style="--c:#ff5a5a"></i>Expert</button>
+                <button class="diff-btn" data-difficulty="master"><i style="--c:#b46cf0"></i>Master</button>
+                <button class="diff-btn" data-difficulty="inferno"><i style="--c:#ff3d6e"></i>Inferno</button>
+            </div>
         </div>
     </div>
 
-    <div id="battlePauseOverlay" class="overlay hidden">
-        <div class="overlay-content">
-            <div class="overlay-title">一時停止</div>
-            <button class="overlay-button" onclick="battleManager && battleManager.togglePause()">▶ 再開</button>
+    <div id="settingsModal" class="overlay modal hidden">
+        <div class="sheet">
+            <button class="sheet-close icon-btn" data-close aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            <div class="sheet-title">設定</div>
+            <div class="setting">
+                <div class="setting-text"><span>スマホの操作方法</span><small>ボタン：画面下に十字キーとA/B</small></div>
+                <div class="seg" id="controlSeg">
+                    <button data-control="button">ボタン</button>
+                    <button data-control="swipe">スワイプ</button>
+                </div>
+            </div>
+            <label class="setting">
+                <span class="setting-text"><span>演出を控えめにする</span><small>画面の揺れやフラッシュを止める</small></span>
+                <input type="checkbox" class="switch" id="reducedToggle">
+            </label>
+            <label class="setting">
+                <span class="setting-text"><span>効果音</span></span>
+                <input type="checkbox" class="switch" id="sfxToggle">
+            </label>
+            <label class="setting">
+                <span class="setting-text"><span>BGM</span></span>
+                <input type="checkbox" class="switch" id="bgmToggle">
+            </label>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <div id="infoModal" class="overlay modal hidden">
+        <div class="sheet sheet-scroll">
+            <button class="sheet-close icon-btn" data-close aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            <div class="sheet-title">遊び方</div>
+
+            <div class="info-section">
+                <h3>モード</h3>
+                <ul>
+                    <li><b>ノーマル</b>：ゲームオーバーまでスコアを稼ぐ</li>
+                    <li><b>1分間スプリント</b>：60秒で何ライン消せるか</li>
+                    <li><b>タイムアタック</b>：10/20/40/100ラインを消すまでのタイム</li>
+                    <li><b>練習</b>：ミノが落ちてこない。直前の操作を戻せる</li>
+                    <li><b>AI対戦</b>：2ライン以上消すとおじゃまラインを送れる。6段階</li>
+                </ul>
+            </div>
+
+            <div class="info-section">
+                <h3>キーボード</h3>
+                <div class="keys">
+                    <span><kbd>←</kbd><kbd>→</kbd></span><span>移動（押しっぱなしで連続）</span>
+                    <span><kbd>↓</kbd></span><span>ソフトドロップ</span>
+                    <span><kbd>Space</kbd></span><span>ハードドロップ</span>
+                    <span><kbd>↑</kbd><kbd>X</kbd></span><span>右回転</span>
+                    <span><kbd>Z</kbd><kbd>Ctrl</kbd></span><span>左回転</span>
+                    <span><kbd>C</kbd><kbd>Shift</kbd></span><span>ホールド</span>
+                    <span><kbd>P</kbd><kbd>Esc</kbd></span><span>一時停止</span>
+                    <span><kbd>Backspace</kbd></span><span>戻す（練習モード）</span>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>スマホ</h3>
+                <ul>
+                    <li><b>ボタン</b>：十字キーで移動、▲で一気に落下、▼でゆっくり落下、Aで右回転、Bで左回転</li>
+                    <li><b>スワイプ</b>（設定で切り替え）：盤面の左半分をタップで左回転、右半分で右回転。左右スワイプで移動、上で一気に落下、下でゆっくり落下</li>
+                </ul>
+            </div>
+
+            <div class="info-section">
+                <h3>ルール</h3>
+                <p>ミノは地面に着いてから0.5秒で固定されます。その間に動かしたり回したりすると固定までの時間が延びます（15回まで）。回転はSRS準拠なので、T-spinもねらえます。ホールドは1つのミノにつき1回までです。</p>
+            </div>
+
+            <div class="info-section">
+                <h3>ホーム画面に追加</h3>
+                <p>ブラウザのメニューから「ホーム画面に追加」すると、アプリのようにワンタップで起動できます。オフラインでも遊べます。</p>
+            </div>
+
+            <div class="info-contact">お問い合わせ・フィードバック：@NaK0528</div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
