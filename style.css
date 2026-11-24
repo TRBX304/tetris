@@ -214,6 +214,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
    ゲーム画面
    =========================================== */
 .game {
+    /* ゲーム中はスクロールもズームもしない（iOSの連打ズーム対策）。長押しメニュー・文字選択も止める */
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
     height: 100vh; height: 100dvh;
     display: flex; flex-direction: column; align-items: center;
     padding: 10px 12px calc(10px + var(--safe-b));

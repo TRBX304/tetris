@@ -150,5 +150,26 @@ export function setupInput(getGame, actions) {
         }
     }, { passive: false });
 
+    // ---- iOS Safari: 連打してもズームしないようにする ----
+    // iOSは viewport の user-scalable=no を無視するので、タッチの既定動作を止める。
+    // ボタンは pointer イベントで動いているので、touch の既定動作を止めても操作には影響しない
+    const stopDefault = (e) => { if (e.cancelable) e.preventDefault(); };
+    for (const el of [document.getElementById('buttonControls'), document.getElementById('swipeBar'), board]) {
+        el.addEventListener('touchstart', stopDefault, { passive: false });
+        el.addEventListener('touchend', stopDefault, { passive: false });
+    }
+    // ゲーム画面のすき間（盤面の横など）を素早く2回タップしたときも止める
+    const gameScreen = document.getElementById('gameScreen');
+    let lastTouchEnd = 0;
+    gameScreen.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd < 350 && !e.target.closest('#pauseButton')) stopDefault(e);
+        lastTouchEnd = now;
+    }, { passive: false });
+    // ピンチズームと、ダブルタップの保険
+    const inGame = () => !gameScreen.classList.contains('hidden');
+    document.addEventListener('gesturestart', (e) => { if (inGame()) e.preventDefault(); }, { passive: false });
+    document.addEventListener('dblclick', (e) => { if (inGame()) e.preventDefault(); }, { passive: false });
+
     return { releaseAll };
 }
