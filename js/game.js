@@ -986,13 +986,24 @@ export class TetrisGame {
         const w = c._w, h = c._h;
         ctx.clearRect(0, 0, w, h);
         const n = Math.min(NEXT_COUNT, this.queue.length);
+        if (n === 0) return;
+        // 2つ目以降のサイズは前のまま
         const slot = h / (n + 0.4);
-        this.queue.slice(0, n).forEach((type, i) => {
-            const big = i === 0;
-            const bs = Math.min(w / 4.6, slot / 2.6) * (big ? 1 : 0.78);
-            const cy = big ? slot * 0.6 : slot * 0.6 + slot * 1.2 + (i - 1) * slot * 0.95;
-            ctx.globalAlpha = big ? 1 : 0.75;
-            this._drawMini(ctx, type, w / 2, cy, bs, PIECE_COLORS[type]);
+        const baseBs = Math.min(w / 4.6, slot / 2.6);
+        const restBs = baseBs * 0.78;
+
+        // 1つ目: 上の42%を使って大きく表示（ミノの横幅に合わせて、枠いっぱいまで）
+        const firstH = h * 0.42;
+        const first = this.queue[0];
+        const s0 = trimmedShape(first);
+        const bs0 = Math.min((w * 0.94) / s0[0].length, (firstH * 0.8) / s0.length, baseBs * 1.35);
+        this._drawMini(ctx, first, w / 2, firstH / 2, bs0, PIECE_COLORS[first]);
+
+        // 2つ目以降: 残りを等分。少し薄くして「次はこれ」をはっきりさせる
+        const restH = (h - firstH) / Math.max(1, n - 1);
+        ctx.globalAlpha = 0.6;
+        this.queue.slice(1, n).forEach((type, i) => {
+            this._drawMini(ctx, type, w / 2, firstH + restH * (i + 0.5), restBs, PIECE_COLORS[type]);
         });
         ctx.globalAlpha = 1;
     }
