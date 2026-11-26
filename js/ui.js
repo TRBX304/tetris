@@ -9,6 +9,7 @@ import { settings, setSetting, isTouchDevice } from './settings.js';
 import { getRecords, formatTime, formatValue, bestValue } from './records.js';
 import { fetchWorldRanking, clearRankingCache } from './ranking.js';
 import { setupInput } from './input.js';
+import { OnlineRoom, OnlineBattle } from './online.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,11 +17,14 @@ let game = null;            // ソロプレイ中の TetrisGame
 let battle = null;          // AI対戦中の BattleManager
 let aiMode = false;         // AI観戦モード
 let currentMode = 'normal';
+let room = null;            // オンライン対戦の部屋
+let online = null;          // オンライン対戦の試合
 
 const rankState = { scope: 'mine', mode: 'normal', period: '30d' };
 
 // 操作対象のゲーム（入力用）
 function activeGame() {
+    if (online) return online.isLive ? online.playerGame : null;
     if (battle && battle.isRunning) return battle.isPaused ? null : battle.playerGame;
     return game && !game.isGameOver ? game : null;
 }
@@ -32,13 +36,33 @@ function blockSizeFn() {
     const area = document.querySelector('.game-area');
     const mobile = window.innerWidth <= 768;
     const sideW = document.querySelector('.side-left').offsetWidth + document.querySelector('.side-right').offsetWidth;
-    const aiPanelW = battle && !mobile ? 200 : 0;
+    const compact = document.body.classList.contains('compact-opponent');
+    const aiPanelW = (battle || online) && !compact ? 200 : 0;
     const gaps = mobile ? 12 + 24 + 8 : 24 + 24 + 10;
-    const availW = window.innerWidth - sideW - aiPanelW - gaps;
+    // 横向きのタッチ端末: 盤面の左右にパッドが来るので、そのぶん空ける
+    let padW = 0;
+    if (document.body.classList.contains('layout-landscape') && !$('buttonControls').classList.contains('hidden')) {
+        const d = document.querySelector('.dpad').offsetWidth;
+        const a = document.querySelector('.ab').offsetWidth;
+        padW = 2 * (Math.max(d, a) + 24);
+    }
+    const availW = window.innerWidth - sideW - aiPanelW - gaps - padW;
     const availH = area.clientHeight - 10;
     const bs = Math.floor(Math.min(availW / BOARD_WIDTH, availH / BOARD_HEIGHT));
-    return Math.max(12, Math.min(mobile ? 36 : 32, bs));
+    return Math.max(12, Math.min(mobile ? 36 : 40, bs));
 }
+
+// レイアウトの種類をbodyのクラスで切り替える
+//  layout-landscape  … タッチ端末の横向き（パッドを盤面の左右に置く）
+//  compact-opponent  … 対戦相手の盤面を横に出さず、影とゲージで見せる
+function updateLayout() {
+    const touch = isTouchDevice();
+    const landscape = touch && window.innerWidth > window.innerHeight;
+    document.body.classList.toggle('layout-landscape', landscape);
+    document.body.classList.toggle('compact-opponent',
+        window.innerWidth <= 768 || (landscape && settings.control === 'button'));
+}
+const isCompact = () => document.body.classList.contains('compact-opponent');
 
 // ===========================================
 // ゲーム → UI の通知
@@ -86,6 +110,7 @@ function showGameScreen() {
 
 function goHome() {
     teardown();
+    leaveRoom();
     bgmManager.stop();
     $('gameScreen').classList.add('hidden');
     $('homeScreen').classList.remove('hidden');
@@ -95,6 +120,7 @@ function goHome() {
 }
 
 function teardown() {
+    if (online) { online.cleanup(); online = null; }
     if (game) { game.cleanup(); game = null; }
     if (battle) { battle.cleanup(); battle = null; }
     inputCtl && inputCtl.releaseAll();
@@ -126,6 +152,8 @@ function prepareAudio() {
 // ===========================================
 function startGame(mode) {
     teardown();
+    leaveRoom();
+    updateLayout();
     currentMode = mode;
     if (mode !== 'practice') localStorage.setItem('lastMode', mode);
     prepareAudio();
@@ -158,6 +186,9 @@ let lastBattle = null;
 
 function startBattle(difficulty) {
     teardown();
+    leaveRoom();
+    updateLayout();
+    setOpponentLabel('AI');
     lastBattle = { difficulty, aiVsAi: aiMode };
     prepareAudio();
     showGameScreen();
@@ -174,6 +205,7 @@ function startBattle(difficulty) {
 
     battle = new BattleManager(difficulty, aiMode, {
         blockSizeFn,
+        compact: isCompact(),
         popupEl: $('boardPopup'),
         onPause: hooks.onPause,
         onStats(pg, ag) {
@@ -192,8 +224,15 @@ function startBattle(difficulty) {
 // ===========================================
 // 結果画面
 // ===========================================
+function resetResultButtons() {
+    $('retryButton').disabled = false;
+    $('retryButton').textContent = 'もう一度';
+    $('homeButton').textContent = 'ホーム';
+}
+
 function showResult(kind, g) {
     if (g !== game) return;
+    resetResultButtons();
     const titles = { gameover: 'GAME OVER', sprint: 'TIME UP', timeattack: 'COMPLETE!' };
     const title = $('resultTitle');
     title.textContent = titles[kind];
@@ -230,6 +269,7 @@ function showResult(kind, g) {
 }
 
 function showBattleResult(title, kind) {
+    resetResultButtons();
     const t = $('resultTitle');
     t.textContent = title;
     t.className = 'sheet-title' + (kind === 'win' ? ' win' : kind === 'lose' ? ' lose' : '');
@@ -364,11 +404,34 @@ async function renderRanking() {
 // 一時停止
 // ===========================================
 function togglePause(force) {
+    if (online) {
+        // オンラインは止められないので、メニューを出すだけ
+        const show = force === undefined ? $('pauseOverlay').classList.contains('hidden') : force;
+        configurePauseMenu(true);
+        $('pauseOverlay').classList.toggle('hidden', !show);
+        return;
+    }
+    configurePauseMenu(false);
     if (battle && battle.isRunning) battle.togglePause(force);
     else if (game && !game.isGameOver) game.togglePause(force);
 }
 
+function configurePauseMenu(isOnline) {
+    $('pauseTitle').textContent = isOnline ? 'メニュー' : '一時停止';
+    $('pauseNote').classList.toggle('hidden', !isOnline);
+    $('resumeButton').textContent = isOnline ? '続ける' : '再開';
+    $('restartButton').classList.toggle('hidden', isOnline);
+    $('pauseHomeButton').textContent = isOnline ? '退出する' : 'ホームに戻る';
+}
+
 function restart() {
+    if (room) {
+        if (!room.opponentId) return;
+        room.requestRematch();
+        $('retryButton').disabled = true;
+        $('retryButton').textContent = '相手を待っています…';
+        return;
+    }
     if (battle || lastBattle && !game) {
         if (lastBattle) { aiMode = lastBattle.aiVsAi; startBattle(lastBattle.difficulty); syncAiToggle(); }
     } else {
@@ -382,6 +445,129 @@ function syncAiToggle() {
 }
 
 // ===========================================
+// オンライン対戦
+// ===========================================
+function setOpponentLabel(text) {
+    $('opponentLabel').textContent = text;
+    $('gaugeLabel').textContent = text;
+}
+
+const ONLINE_STATUS = {
+    connecting: { text: '接続しています…', busy: true },
+    waiting: { text: '相手を待っています。相手にも同じ部屋番号を入れてもらってください', busy: true },
+    full: { text: 'この部屋は満員です（2人まで）。別の番号を使ってください', busy: false },
+    error: { text: '接続できませんでした。通信環境を確認して、もう一度お試しください', busy: false }
+};
+
+function setOnlineStatus(status) {
+    const st = ONLINE_STATUS[status];
+    if (!st) return;
+    $('onlineStatus').textContent = st.text;
+    $('onlineSpinner').classList.toggle('hidden', !st.busy);
+    if (status === 'full' || status === 'error') {
+        if (room) { room.leave(); room = null; }
+        $('leaveRoomBtn').textContent = '閉じる';
+    } else {
+        $('leaveRoomBtn').textContent = 'やめる';
+    }
+}
+
+async function joinRoom(code) {
+    leaveRoom();
+    $('onlineModal').classList.add('hidden');
+    $('onlineRoomTitle').textContent = `部屋 ${code}`;
+    $('onlineWaitOverlay').classList.remove('hidden');
+    localStorage.setItem('lastRoom', code);
+    room = new OnlineRoom(code, {
+        onStatus: setOnlineStatus,
+        onStart: startOnlineMatch,
+        onMessage: (msg) => online && online.onMessage(msg),
+        onOpponentLeft: (was) => {
+            if (online && was === 'playing') online.opponentLeft();
+            else if (was === 'ended') {
+                $('resultBest').textContent = '相手が退出しました。新しい相手が来たら始まります';
+                $('retryButton').disabled = true;
+                $('retryButton').textContent = '相手を待っています…';
+            }
+        }
+    });
+    await room.join();
+}
+
+function leaveRoom() {
+    if (online) { online.cleanup(); online = null; }
+    if (room) { room.leave(); room = null; }
+}
+
+function startOnlineMatch() {
+    // 前の試合だけ片付ける（部屋からは出ない）
+    if (online) { online.cleanup(); online = null; }
+    if (game) { game.cleanup(); game = null; }
+    if (battle) { battle.cleanup(); battle = null; }
+    inputCtl && inputCtl.releaseAll();
+    updateLayout();
+    prepareAudio();
+    showGameScreen();
+
+    $('aiGamePanel').classList.remove('hidden');
+    $('aiGaugePanel').classList.remove('hidden');
+    setOpponentLabel('相手');
+    $('undoButton').classList.add('hidden');
+    $('scoreStat').classList.remove('hidden');
+    $('levelStat').classList.add('hidden');
+    $('remainStat').classList.add('hidden');
+    $('timeDisplay').textContent = '';
+    $('modeInfo').textContent = `オンライン ・ 部屋 ${room.code}`;
+    updateControlsVisibility(false);
+
+    online = new OnlineBattle(room, {
+        blockSizeFn,
+        compact: isCompact(),
+        popupEl: $('boardPopup'),
+        onStats(pg, rv) {
+            $('scoreDisplay').textContent = pg.score.toLocaleString();
+            $('linesDisplay').textContent = pg.linesCleared;
+            $('aiScoreDisplay').textContent = rv.score.toLocaleString();
+            $('aiLinesDisplay').textContent = rv.lines;
+            $('aiGaugeBar').style.height = `${(rv.stackHeight() / BOARD_HEIGHT) * 100}%`;
+            $('aiGaugeLines').textContent = rv.lines;
+        },
+        onCountdown(n) {
+            const el = $('countdown');
+            el.textContent = n > 0 ? n : 'GO!';
+            el.className = 'countdown show';
+            void el.offsetWidth;
+            el.classList.add('anim');
+            if (n === 0) setTimeout(() => { el.className = 'countdown'; }, 700);
+        },
+        onEnd(title, kind, reason) {
+            setTimeout(() => showOnlineResult(title, kind, reason), 600);
+        }
+    });
+    online.start(3);
+}
+
+function showOnlineResult(title, kind, reason) {
+    if (!online) return;
+    resetResultButtons();
+    const t = $('resultTitle');
+    t.textContent = title;
+    t.className = 'sheet-title ' + (kind === 'win' ? 'win' : 'lose');
+    $('resultMode').textContent = `オンライン対戦 ・ 部屋 ${room ? room.code : ''}`;
+    $('resultValue').textContent = `${online.playerGame.linesCleared} ライン`;
+    $('resultBest').className = 'result-best';
+    $('resultBest').textContent = reason === 'left' ? '相手が退出しました' : '';
+    $('registerArea').classList.add('hidden');
+    $('homeButton').textContent = '退出';
+    if (!room || !room.opponentId) {
+        $('retryButton').disabled = true;
+        $('retryButton').textContent = '相手を待っています…';
+    }
+    $('pauseOverlay').classList.add('hidden');
+    $('resultOverlay').classList.remove('hidden');
+}
+
+// ===========================================
 // 設定
 // ===========================================
 function syncSettingsUI() {
@@ -392,14 +578,17 @@ function syncSettingsUI() {
 }
 
 function applyControlChange() {
+    updateLayout();
     if ($('gameScreen').classList.contains('hidden')) return;
-    const aiPlaying = battle ? battle.aiVsAi : game ? game.isAIMode : false;
+    const aiPlaying = online ? false : battle ? battle.aiVsAi : game ? game.isAIMode : false;
     updateControlsVisibility(aiPlaying);
     requestAnimationFrame(resizeActive);
 }
 
 function resizeActive() {
+    updateLayout();
     if (game) game.resize();
+    if (online && online.playerGame) online.playerGame.resize();
     if (battle && battle.playerGame) battle.playerGame.resize();
 }
 
@@ -459,6 +648,33 @@ export function initUI() {
     $('registerBtn').addEventListener('click', submitRanking);
     $('playerName').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitRanking(); });
 
+    // オンライン対戦
+    const codeInput = $('roomCode');
+    const tryJoin = () => {
+        const code = codeInput.value.trim();
+        if (!/^\d{4,8}$/.test(code)) {
+            $('onlineMsg').textContent = '4〜8桁の数字を入れてください';
+            codeInput.focus();
+            return;
+        }
+        $('onlineMsg').textContent = '';
+        joinRoom(code);
+    };
+    $('joinRoomBtn').addEventListener('click', tryJoin);
+    codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryJoin(); });
+    codeInput.addEventListener('input', () => { $('onlineMsg').textContent = ''; });
+    $('randomRoomBtn').addEventListener('click', () => {
+        codeInput.value = String(Math.floor(1000 + Math.random() * 9000));
+        $('onlineMsg').textContent = 'この番号を相手に伝えて、同じ番号で入ってもらってください';
+    });
+    document.querySelector('[data-open="onlineModal"]').addEventListener('click', () => {
+        if (!codeInput.value) codeInput.value = localStorage.getItem('lastRoom') || '';
+    });
+    $('leaveRoomBtn').addEventListener('click', () => {
+        leaveRoom();
+        $('onlineWaitOverlay').classList.add('hidden');
+    });
+
     // 設定
     $('controlSeg').addEventListener('click', (e) => {
         const b = e.target.closest('button'); if (!b) return;
@@ -481,12 +697,13 @@ export function initUI() {
 
     // アプリを離れたら自動で一時停止
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) togglePause(true);
+        if (document.hidden && !online) togglePause(true);
     });
 
+    updateLayout();
     syncAiToggle();
     refreshHome();
 
     // ローカルで動かしているときだけ、デバッグ用に触れるようにする
-    if (location.hostname === 'localhost') window.__tl = { get game() { return game; }, get battle() { return battle; } };
+    if (location.hostname === 'localhost') window.__tl = { get game() { return game; }, get battle() { return battle; }, get online() { return online; }, get room() { return room; } };
 }

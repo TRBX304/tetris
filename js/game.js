@@ -18,6 +18,17 @@ import { PIECE_COLORS } from './config.js';
 
 const noop = () => {};
 
+// フラット2.0のブロック（上にハイライト、下に影）。オンライン対戦の相手盤面でも使う
+export function drawBlock(ctx, x, y, size, color) {
+    const g = Math.max(1, size * 0.05);
+    ctx.fillStyle = color;
+    ctx.fillRect(x + g, y + g, size - g * 2, size - g * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillRect(x + g, y + g, size - g * 2, size * 0.14);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x + g, y + size - g - size * 0.12, size - g * 2, size * 0.12);
+}
+
 export class TetrisGame {
     /**
      * @param {string} mode  normal / sprint1m / time10.. / practice / battle
@@ -960,13 +971,7 @@ export class TetrisGame {
 
     // フラット2.0のブロック（上にハイライト、下に影）
     drawBlock(ctx, x, y, size, color) {
-        const g = Math.max(1, size * 0.05);
-        ctx.fillStyle = color;
-        ctx.fillRect(x + g, y + g, size - g * 2, size - g * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.22)';
-        ctx.fillRect(x + g, y + g, size - g * 2, size * 0.14);
-        ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.fillRect(x + g, y + size - g - size * 0.12, size - g * 2, size * 0.12);
+        drawBlock(ctx, x, y, size, color);
     }
 
     _drawMini(ctx, type, cx, cy, bs, color) {

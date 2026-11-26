@@ -3,7 +3,7 @@
 // HTML/JS/CSS は「ネットワーク優先 → だめならキャッシュ」
 // 更新がすぐ届き、オフラインでも遊べる
 // ===========================================
-const CACHE_NAME = 'tetris-like-v2';
+const CACHE_NAME = 'tetris-like-v3';
 const PRECACHE = [
     './',
     './index.html',
@@ -25,7 +25,8 @@ const PRECACHE = [
     './js/battle.js',
     './js/ranking.js',
     './js/records.js',
-    './js/stars.js'
+    './js/stars.js',
+    './js/online.js'
 ];
 
 self.addEventListener('install', (event) => {

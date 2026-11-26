@@ -73,6 +73,10 @@
                 <button class="mode-card" data-mode="time100"><span class="mode-name">100ライン</span><span class="mode-desc">タイムアタック</span><span class="mode-best num" data-best="time100">—</span></button>
                 <button class="mode-card mode-practice" data-mode="practice"><span class="mode-name">練習</span><span class="mode-desc">落下なし・戻せる</span><span class="mode-best">配置の練習に</span></button>
                 <button class="mode-card mode-battle" data-open="battleModal"><span class="mode-name">AI対戦</span><span class="mode-desc">おじゃまを送り合う</span><span class="mode-best">6段階</span></button>
+                <button class="mode-card mode-online" data-open="onlineModal">
+                    <span class="mode-online-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+                    <span class="mode-online-text"><span class="mode-name">オンライン対戦</span><span class="mode-desc">部屋番号をそろえて友達と1対1</span></span>
+                </button>
             </div>
             <label class="switch-row card">
                 <span class="switch-text"><span>AI観戦モード</span><small id="aiModeDesc">OFF：自分でプレイ</small></span>
@@ -136,6 +140,7 @@
             <div class="board-wrap" id="boardWrap">
                 <canvas id="gameCanvas"></canvas>
                 <div class="board-popup" id="boardPopup" aria-live="polite"></div>
+                <div class="countdown" id="countdown" aria-live="assertive"></div>
             </div>
 
             <aside class="side side-right">
@@ -144,14 +149,14 @@
                     <canvas id="nextCanvas" class="next-canvas" width="80" height="170"></canvas>
                 </div>
                 <div class="ai-gauge-panel hidden" id="aiGaugePanel">
-                    <div class="panel-label">AI</div>
+                    <div class="panel-label" id="gaugeLabel">AI</div>
                     <div class="ai-gauge"><div class="ai-gauge-bar" id="aiGaugeBar"></div></div>
                     <div class="ai-gauge-lines num"><span id="aiGaugeLines">0</span>L</div>
                 </div>
             </aside>
 
             <div class="ai-panel card hidden" id="aiGamePanel">
-                <div class="panel-label">AI</div>
+                <div class="panel-label" id="opponentLabel">AI</div>
                 <canvas id="aiCanvas"></canvas>
                 <div class="ai-panel-bottom">
                     <canvas id="aiNextCanvas" width="56" height="100"></canvas>
@@ -210,7 +215,8 @@
 
     <div id="pauseOverlay" class="overlay hidden">
         <div class="sheet">
-            <div class="sheet-title">一時停止</div>
+            <div class="sheet-title" id="pauseTitle">一時停止</div>
+            <p class="sheet-desc hidden" id="pauseNote">オンライン対戦中はゲームが止まりません</p>
             <div class="sheet-actions vertical">
                 <button class="btn btn-primary" id="resumeButton">再開</button>
                 <button class="btn btn-ghost" id="restartButton">やり直す</button>
@@ -233,6 +239,29 @@
                 <button class="diff-btn" data-difficulty="master"><i style="--c:#b46cf0"></i>Master</button>
                 <button class="diff-btn" data-difficulty="inferno"><i style="--c:#ff3d6e"></i>Inferno</button>
             </div>
+        </div>
+    </div>
+
+    <div id="onlineModal" class="overlay modal hidden">
+        <div class="sheet">
+            <button class="sheet-close icon-btn" data-close aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            <div class="sheet-title">オンライン対戦</div>
+            <p class="sheet-desc">同じ部屋番号を入れた人と1対1で対戦します。番号は相手と決めてください。</p>
+            <input type="text" id="roomCode" class="input input-code num" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="部屋番号（4〜8桁）" autocomplete="off">
+            <div class="register-msg" id="onlineMsg"></div>
+            <div class="sheet-actions">
+                <button class="btn btn-ghost" id="randomRoomBtn">番号を作る</button>
+                <button class="btn btn-primary" id="joinRoomBtn">入室</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="onlineWaitOverlay" class="overlay hidden">
+        <div class="sheet">
+            <div class="sheet-title" id="onlineRoomTitle">部屋</div>
+            <div class="spinner" id="onlineSpinner" aria-hidden="true"></div>
+            <p class="sheet-desc" id="onlineStatus">接続しています…</p>
+            <button class="btn btn-ghost" id="leaveRoomBtn">やめる</button>
         </div>
     </div>
 
@@ -275,6 +304,7 @@
                     <li><b>タイムアタック</b>：10/20/40/100ラインを消すまでのタイム</li>
                     <li><b>練習</b>：ミノが落ちてこない。直前の操作を戻せる</li>
                     <li><b>AI対戦</b>：2ライン以上消すとおじゃまラインを送れる。6段階</li>
+                    <li><b>オンライン対戦</b>：同じ部屋番号を入れた人と1対1。ミノの順番はそれぞれ別々</li>
                 </ul>
             </div>
 
@@ -295,7 +325,7 @@
             <div class="info-section">
                 <h3>スマホ</h3>
                 <ul>
-                    <li><b>ボタン</b>：十字キーで移動、▲で一気に落下、▼でゆっくり落下、Aで右回転、Bで左回転</li>
+                    <li><b>ボタン</b>：十字キーで移動、▲で一気に落下、▼でゆっくり落下、Aで右回転、Bで左回転。タブレットを横向きにすると、盤面の左右にボタンが分かれます</li>
                     <li><b>スワイプ</b>（設定で切り替え）：盤面の左半分をタップで左回転、右半分で右回転。左右スワイプで移動、上で一気に落下、下でゆっくり落下</li>
                 </ul>
             </div>

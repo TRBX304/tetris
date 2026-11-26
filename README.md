@@ -11,6 +11,7 @@
   - input.js … キーボード／ボタン／スワイプ（押しっぱなしの連続移動）
   - audio.js … 効果音・BGM
   - ai.js / battle.js … AI観戦・AI対戦
+  - online.js … オンライン対戦（Supabase Realtime の Broadcast/Presence。テーブル不要）
   - ranking.js … 世界ランキング（Supabase）
   - records.js … 自分の記録（localStorage）
   - config.js … 定数（サイト名・ロックディレイ・DASなど）
@@ -26,3 +27,8 @@
 ## ローカルで動かす
 ES Modules を使っているので、ファイルを直接開くのではなくサーバー経由で。
   python3 -m http.server 8000  → http://localhost:8000/
+
+## オンライン対戦
+- Supabase の Realtime 設定「Allow public access」が有効（デフォルト）なら、追加の設定はいりません
+- 部屋番号ごとに `tetris-like-room-<番号>` というチャンネルに入ります。3人目は入れません
+- supabase-js は、オンライン対戦を選んだときだけ esm.sh から読み込みます（オフラインでも普段のプレイには影響しない）

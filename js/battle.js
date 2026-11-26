@@ -24,7 +24,7 @@ export class BattleManager {
         this.isPaused = false;
         this.animationFrameId = null;
         this.lastUpdateTime = 0;
-        this.isMobile = window.innerWidth <= 768;
+        this.isMobile = ui.compact ?? (window.innerWidth <= 768);
     }
 
     start() {
